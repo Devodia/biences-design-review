@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.3.0
+// @version      0.4.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -49,19 +49,20 @@
   let showAll = false;
   let selected = null;
   let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
+  let selPath = null;   // element exact clique (pour redescendre apres un ↑ parent)
 
   /* ---- primitives DS ------------------------------------------------------ */
   function hasStyle(el) {
     return el.nodeType === 1 && Array.prototype.some.call(el.classList, function (c) { return c.endsWith('-style'); });
   }
-  function resolve(el) {                                  // remonte au + proche ancetre -style
+  function nearestStyled(el) {                            // + proche ancetre porteur d'une -style (ou null)
     let n = el;
     while (n && n.nodeType === 1) {
-      if (n.closest('#bdr-root')) return el;
+      if (n.closest('#bdr-root')) return null;
       if (hasStyle(n)) return n;
       n = n.parentElement;
     }
-    return el;
+    return null;
   }
   function classify(el) {
     const ds = [], candidat = [];
@@ -244,6 +245,9 @@
       .bdr-state.candidat{background:#2563eb33;color:#93c5fd;} .bdr-state.ds{background:#16a34a33;color:#86efac;}
       .bdr-state.override{background:#dc262633;color:#fca5a5;} .bdr-state.plain{background:#47556933;color:#cbd5e1;}
       .bdr-x{cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;}
+      .bdr-nav{display:flex;gap:9px;align-items:center;}
+      .bdr-navbtn{cursor:pointer;color:#93c5fd;font-size:15px;line-height:1;font-weight:700;}
+      .bdr-navbtn:hover{color:#fff;}
       .bdr-chips{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;}
       .bdr-chip{display:inline-block;padding:1px 6px;border-radius:5px;font-weight:600;font-family:ui-monospace,monospace;font-size:11px;}
       .bdr-anchor{color:#94a3b8;font-size:11px;word-break:break-word;}
@@ -300,12 +304,24 @@
   const reopen = h('div', { id: 'bdr-reopen', title: 'Rouvrir le panneau', text: '◀ Panneau', onclick: expand });
 
   /* ---- selection + rendu -------------------------------------------------- */
-  function select(el) {
+  function setSel(el) {
     if (selected) selected.removeAttribute('data-bdr-sel');
-    selected = el; el.setAttribute('data-bdr-sel', '');
-    renderSelected(); expand();
+    selected = el; if (el) el.setAttribute('data-bdr-sel', '');
+    renderSelected();
   }
-  function deselect() { if (selected) selected.removeAttribute('data-bdr-sel'); selected = null; renderSelected(); }
+  function select(el) { selPath = el; setSel(el); expand(); }
+  function deselect() { if (selected) selected.removeAttribute('data-bdr-sel'); selected = null; selPath = null; renderSelected(); }
+  function navUp() {
+    if (!selected) return;
+    const p = selected.parentElement;
+    if (p && p.nodeType === 1 && p !== document.body && p !== document.documentElement && !p.closest('#bdr-root')) setSel(p);
+  }
+  function navDown() {
+    if (!selected || !selPath || selected === selPath) return;
+    let n = selPath;
+    while (n && n.parentElement !== selected) n = n.parentElement;
+    if (n) setSel(n);
+  }
 
   function renderSelected() {
     verbsBox.innerHTML = '';
@@ -315,7 +331,10 @@
     const stLabel = { candidat: '✨ candidat', ds: '✅ valide', override: '⛔ inline', plain: 'DS neutre' }[c.state];
     selCard.appendChild(h('div', { class: 'bdr-selhd' },
       h('span', { class: 'bdr-state ' + c.state, text: stLabel }),
-      h('span', { class: 'bdr-x', text: '×', title: 'Deselectionner', onclick: deselect })));
+      h('span', { class: 'bdr-nav' },
+        h('span', { class: 'bdr-navbtn', title: 'Selectionner le parent', text: '↑', onclick: navUp }),
+        h('span', { class: 'bdr-navbtn', title: 'Redescendre vers l element clique', text: '↓', onclick: navDown }),
+        h('span', { class: 'bdr-x', text: '×', title: 'Deselectionner', onclick: deselect }))));
     const chips = h('div', { class: 'bdr-chips' });
     c.ds.forEach(function (n) { chips.appendChild(chip(n, '#16a34a')); });
     c.candidat.forEach(function (n) { chips.appendChild(chip(n, '#2563eb')); });
@@ -405,25 +424,30 @@
   let hovered = null;
   function setHover(el) { if (hovered && hovered !== el) hovered.removeAttribute('data-bdr-hover'); hovered = el; if (el) el.setAttribute('data-bdr-hover', ''); }
   function clearHover() { if (hovered) hovered.removeAttribute('data-bdr-hover'); hovered = null; hoverLine.innerHTML = 'Survole un element...'; }
-  function showHoverInfo(target, leaf) {
-    const c = classify(target);
+  function showHoverInfo(el) {
+    const c = classify(el);
     const names = c.ds.concat(c.candidat);
-    const up = (target !== leaf) ? '<span class="up">↑ parent &lt;' + target.tagName.toLowerCase() + '&gt;</span> ' : '';
-    hoverLine.innerHTML = up + '&lt;' + target.tagName.toLowerCase() + '&gt; '
-      + (names.length ? names.join(', ') : (c.override.length ? 'inline-style' : '— DS neutre —'));
+    let txt = '&lt;' + el.tagName.toLowerCase() + '&gt; ';
+    if (names.length) { txt += names.join(', '); }
+    else {
+      const base = c.override.length ? 'inline-style' : '— DS neutre —';
+      const anc = nearestStyled(el);
+      if (anc) { const a = classify(anc); txt += base + ' <span class="up">↑ ' + anc.tagName.toLowerCase() + ' ' + a.ds.concat(a.candidat).join(',') + '</span>'; }
+      else txt += base;
+    }
+    hoverLine.innerHTML = txt;
   }
 
   /* ---- listeners ---------------------------------------------------------- */
   document.addEventListener('mouseover', function (e) {
     if (!reviewMode || e.target.closest('#bdr-root')) { clearHover(); return; }
-    const target = resolve(e.target);
-    setHover(target); showHoverInfo(target, e.target);
+    setHover(e.target); showHoverInfo(e.target);
   }, true);
   document.addEventListener('click', function (e) {
     if (!reviewMode) return;
     if (e.target.closest('#bdr-root')) return;
     e.preventDefault(); e.stopPropagation();
-    select(resolve(e.target));
+    select(e.target);
   }, true);
   addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); });
   addEventListener('keydown', function (e) { if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); } });
