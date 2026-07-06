@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.2.0
+// @version      0.3.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -41,13 +41,14 @@
   const Z = 2147483000;
 
   /* ---- catalogue ---------------------------------------------------------- */
-  const CAT_DATA = {"validated": ["add-to-cart-11-style", "add-to-cart-12-style", "cta-1-style", "cta-2-style", "cta-3-style", "cta-4-style", "cta-important-style", "default-style", "fidelity-offer-title-style", "font1-bold-title-style", "font1-medium-slogan-style", "font1-medium-title-style", "font2-big-title-style", "font2-cta-slogan-style", "font2-slideshow-slogan-style", "font2-small-italic-title-style", "font2-small-smaller-title-style", "font2-small-title-style", "font2-text-italic-style", "font2-title-italic-style", "font2-title-style", "footer-address-style", "footer-copyright-style", "footer-link-hover-style", "footer-links-title-style", "form-label-checkbox-style", "form-label-style", "heavy-subtitle-uppercase-style", "light-subtitle-style", "menu-bottom-link-style", "menu-cart-qty-style", "menu-link-hover-style", "menu-link-mc-style", "menu-link-style", "menu-post-title-style", "menu-promo-bar-style", "menu-responsive-lang-link-style", "menu-responsive-link-style", "menu-responsive-search-placeholder-style", "menu-responsive-search-style", "menu-sub-link-style", "menu-top-link-style", "ppp-style", "product-inci-style", "product-instead-style", "product-name-style", "product-score-style", "product-step-mc-style", "product-step-style", "promoted-product-name-style", "select-style", "sherborne-title-style", "shop-product-base-price-style", "shop-product-description-style", "shop-product-discount-style", "shop-product-fake-discount-style", "shop-product-price-style", "shop-product-title-style", "small-text-style", "text-bold-style", "text-style", "unavailable-2-style", "unavailable-style"], "proposed": ["arguments-list-style", "count-badge-style", "filter-chip-style", "icon-button-style", "link-subtle-style", "micro-text-style", "panel-card-style", "progress-fill-style", "progress-track-style", "section-label-style", "selection-card-style"]};
-  const CAT = { validated: new Set(CAT_DATA.validated), proposed: new Set(CAT_DATA.proposed) };
+  const CAT_DATA = {"validated": ["add-to-cart-11-style", "add-to-cart-12-style", "cta-1-style", "cta-2-style", "cta-3-style", "cta-4-style", "cta-important-style", "default-style", "fidelity-offer-title-style", "font1-bold-title-style", "font1-medium-slogan-style", "font1-medium-title-style", "font2-big-title-style", "font2-cta-slogan-style", "font2-slideshow-slogan-style", "font2-small-italic-title-style", "font2-small-smaller-title-style", "font2-small-title-style", "font2-text-italic-style", "font2-title-italic-style", "font2-title-style", "footer-address-style", "footer-copyright-style", "footer-link-hover-style", "footer-links-title-style", "form-label-checkbox-style", "form-label-style", "heavy-subtitle-uppercase-style", "light-subtitle-style", "menu-bottom-link-style", "menu-cart-qty-style", "menu-link-hover-style", "menu-link-mc-style", "menu-link-style", "menu-post-title-style", "menu-promo-bar-style", "menu-responsive-lang-link-style", "menu-responsive-link-style", "menu-responsive-search-placeholder-style", "menu-responsive-search-style", "menu-sub-link-style", "menu-top-link-style", "ppp-style", "product-inci-style", "product-instead-style", "product-name-style", "product-score-style", "product-step-mc-style", "product-step-style", "promoted-product-name-style", "select-style", "sherborne-title-style", "shop-product-base-price-style", "shop-product-description-style", "shop-product-discount-style", "shop-product-fake-discount-style", "shop-product-price-style", "shop-product-title-style", "small-text-style", "text-bold-style", "text-style", "unavailable-2-style", "unavailable-style"], "proposed": ["arguments-list-style", "count-badge-style", "filter-chip-style", "icon-button-style", "link-subtle-style", "micro-text-style", "panel-card-style", "progress-fill-style", "progress-track-style", "section-label-style", "selection-card-style"], "groups": [{"title": "Textes", "items": [{"name": "default-style", "proposed": false}, {"name": "micro-text-style", "proposed": true}, {"name": "small-text-style", "proposed": false}, {"name": "text-bold-style", "proposed": false}, {"name": "text-style", "proposed": false}]}, {"title": "Titres — police 1", "items": [{"name": "font1-bold-title-style", "proposed": false}, {"name": "font1-medium-slogan-style", "proposed": false}, {"name": "font1-medium-title-style", "proposed": false}]}, {"title": "Titres — police 2", "items": [{"name": "font2-big-title-style", "proposed": false}, {"name": "font2-cta-slogan-style", "proposed": false}, {"name": "font2-slideshow-slogan-style", "proposed": false}, {"name": "font2-small-italic-title-style", "proposed": false}, {"name": "font2-small-smaller-title-style", "proposed": false}, {"name": "font2-small-title-style", "proposed": false}, {"name": "font2-text-italic-style", "proposed": false}, {"name": "font2-title-italic-style", "proposed": false}, {"name": "font2-title-style", "proposed": false}, {"name": "sherborne-title-style", "proposed": false}]}, {"title": "Sous-titres & slogans", "items": [{"name": "heavy-subtitle-uppercase-style", "proposed": false}, {"name": "light-subtitle-style", "proposed": false}]}, {"title": "Boutons (CTA)", "items": [{"name": "add-to-cart-11-style", "proposed": false}, {"name": "add-to-cart-12-style", "proposed": false}, {"name": "cta-1-style", "proposed": false}, {"name": "cta-2-style", "proposed": false}, {"name": "cta-3-style", "proposed": false}, {"name": "cta-4-style", "proposed": false}, {"name": "cta-important-style", "proposed": false}]}, {"title": "Boutons-icônes", "items": [{"name": "icon-button-style", "proposed": true}]}, {"title": "Formulaires", "items": [{"name": "form-label-checkbox-style", "proposed": false}, {"name": "form-label-style", "proposed": false}, {"name": "select-style", "proposed": false}]}, {"title": "Prix & produit (shop)", "items": [{"name": "shop-product-base-price-style", "proposed": false}, {"name": "shop-product-description-style", "proposed": false}, {"name": "shop-product-discount-style", "proposed": false}, {"name": "shop-product-fake-discount-style", "proposed": false}, {"name": "shop-product-price-style", "proposed": false}, {"name": "shop-product-title-style", "proposed": false}]}, {"title": "Fiche produit", "items": [{"name": "ppp-style", "proposed": false}, {"name": "product-inci-style", "proposed": false}, {"name": "product-instead-style", "proposed": false}, {"name": "product-name-style", "proposed": false}, {"name": "product-score-style", "proposed": false}, {"name": "product-step-mc-style", "proposed": false}, {"name": "product-step-style", "proposed": false}, {"name": "unavailable-2-style", "proposed": false}, {"name": "unavailable-style", "proposed": false}]}, {"title": "Menu / navigation", "items": [{"name": "menu-bottom-link-style", "proposed": false}, {"name": "menu-cart-qty-style", "proposed": false}, {"name": "menu-link-hover-style", "proposed": false}, {"name": "menu-link-mc-style", "proposed": false}, {"name": "menu-link-style", "proposed": false}, {"name": "menu-post-title-style", "proposed": false}, {"name": "menu-promo-bar-style", "proposed": false}, {"name": "menu-responsive-lang-link-style", "proposed": false}, {"name": "menu-responsive-link-style", "proposed": false}, {"name": "menu-responsive-search-placeholder-style", "proposed": false}, {"name": "menu-responsive-search-style", "proposed": false}, {"name": "menu-sub-link-style", "proposed": false}, {"name": "menu-top-link-style", "proposed": false}]}, {"title": "Footer", "items": [{"name": "footer-address-style", "proposed": false}, {"name": "footer-copyright-style", "proposed": false}, {"name": "footer-link-hover-style", "proposed": false}, {"name": "footer-links-title-style", "proposed": false}]}, {"title": "Cartes & conteneurs", "items": [{"name": "panel-card-style", "proposed": true}, {"name": "selection-card-style", "proposed": true}]}, {"title": "Puces & badges", "items": [{"name": "count-badge-style", "proposed": true}, {"name": "filter-chip-style", "proposed": true}]}, {"title": "Liens & labels", "items": [{"name": "link-subtle-style", "proposed": true}, {"name": "section-label-style", "proposed": true}]}, {"title": "Jauges & barres", "items": [{"name": "progress-fill-style", "proposed": true}, {"name": "progress-track-style", "proposed": true}]}, {"title": "Listes", "items": [{"name": "arguments-list-style", "proposed": true}]}, {"title": "Divers", "items": [{"name": "fidelity-offer-title-style", "proposed": false}, {"name": "promoted-product-name-style", "proposed": false}]}]};
+  const CAT = { validated: new Set(CAT_DATA.validated), proposed: new Set(CAT_DATA.proposed), groups: CAT_DATA.groups || [] };
 
   const feedbacks = [];
   let reviewMode = true;
   let showAll = false;
   let selected = null;
+  let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
 
   /* ---- primitives DS ------------------------------------------------------ */
   function hasStyle(el) {
@@ -104,6 +105,60 @@
     }
     return null;
   }
+
+  function buildTokens() {                               // map couleur resolue -> nom de token DS
+    const probe = h('span', { style: 'position:absolute;opacity:0;pointer-events:none' });
+    document.body.appendChild(probe);
+    const names = new Set();
+    for (const sh of document.styleSheets) {
+      let rules; try { rules = sh.cssRules; } catch (e) { continue; }
+      for (const r of rules) {
+        if (r.selectorText && /(^|,)\s*:root\b/.test(r.selectorText)) {
+          for (let i = 0; i < r.style.length; i++) { const p = r.style[i]; if (p.indexOf('--') === 0) names.add(p); }
+        }
+      }
+    }
+    names.forEach(function (name) {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      if (!raw) return;
+      probe.style.color = ''; probe.style.color = raw;   // valeur non-couleur (police, ombre) => reste vide
+      if (!probe.style.color) return;
+      const rgb = getComputedStyle(probe).color;
+      if (rgb && rgb !== 'rgba(0, 0, 0, 0)' && !(rgb in TOKENS)) TOKENS[rgb] = name;
+    });
+    probe.remove();
+  }
+
+  function propsBlock(el) {
+    const cs = getComputedStyle(el);
+    const rows = [];
+    function color(label, prop) {
+      const v = cs.getPropertyValue(prop).trim();
+      if (!v || v === 'rgba(0, 0, 0, 0)' || v === 'transparent') return;
+      rows.push([label, v, TOKENS[v] || null]);
+    }
+    function plain(label, v) { if (v && v !== 'normal' && v !== '0px') rows.push([label, v, null]); }
+    color('fond', 'background-color');
+    color('texte', 'color');
+    if (cs.borderTopStyle !== 'none' && cs.borderTopWidth !== '0px') {
+      const bc = cs.borderTopColor.trim();
+      rows.push(['bordure', cs.borderTopWidth + ' ' + cs.borderTopStyle + ' ' + bc, TOKENS[bc] || null]);
+    }
+    plain('radius', cs.borderRadius);
+    plain('police', cs.fontFamily);
+    plain('taille', cs.fontSize);
+    plain('graisse', cs.fontWeight);
+    const box = h('div', { class: 'bdr-props' });
+    if (!rows.length) return box;
+    box.appendChild(h('div', { class: 'bdr-props-t', text: 'Propriétés' }));
+    rows.forEach(function (r) {
+      const row = h('div', { class: 'bdr-prop' }, h('span', { class: 'k', text: r[0] }), h('span', { class: 'v', text: r[1] }));
+      if (r[2]) row.appendChild(h('span', { class: 'tok', text: r[2] }));
+      box.appendChild(row);
+    });
+    return box;
+  }
+
   const breakpoint = function () { return innerWidth < 768 ? 'mobile' : innerWidth < 1024 ? 'tablet' : 'desktop'; };
   const classAttr = function (el) { return el.getAttribute('class') || ''; };   // SVG-safe
 
@@ -192,6 +247,12 @@
       .bdr-chips{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;}
       .bdr-chip{display:inline-block;padding:1px 6px;border-radius:5px;font-weight:600;font-family:ui-monospace,monospace;font-size:11px;}
       .bdr-anchor{color:#94a3b8;font-size:11px;word-break:break-word;}
+      .bdr-props{margin-top:9px;border-top:1px solid #334155;padding-top:7px;}
+      .bdr-props-t{color:#93c5fd;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+      .bdr-prop{display:flex;gap:6px;align-items:baseline;font-size:11px;padding:1px 0;flex-wrap:wrap;}
+      .bdr-prop .k{color:#94a3b8;min-width:50px;}
+      .bdr-prop .v{color:#e2e8f0;font-family:ui-monospace,monospace;word-break:break-all;}
+      .bdr-prop .tok{color:#34d399;font-family:ui-monospace,monospace;background:#34d39922;padding:0 5px;border-radius:4px;}
       .bdr-verbs{display:flex;flex-wrap:wrap;gap:6px;padding:11px 14px;}
       .bdr-v{cursor:pointer;border:1px solid #475569;background:#334155;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;}
       .bdr-v:hover{background:#475569;} .bdr-v.promote{border-color:#3b82f6;color:#93c5fd;}
@@ -199,6 +260,8 @@
       #bdr-search{width:100%;padding:7px 9px;border:1px solid #475569;border-radius:7px;margin:6px 0;font-size:12px;background:#0f172a;color:#e2e8f0;}
       .bdr-opt{cursor:pointer;padding:5px 8px;border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;color:#cbd5e1;}
       .bdr-opt:hover{background:#2563eb;color:#fff;}
+      .bdr-opt.prop{color:#93c5fd;}
+      .bdr-optgroup{color:#93c5fd;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:9px 4px 3px;border-top:1px solid #334155;margin-top:2px;}
       #bdr-note{width:100%;height:80px;border:1px solid #475569;border-radius:7px;padding:7px;font-size:12px;resize:vertical;background:#0f172a;color:#e2e8f0;margin:6px 0;}
       .bdr-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;background:#0f172a;}
       #bdr-toast{position:fixed;bottom:16px;right:338px;z-index:${Z};pointer-events:none;background:#0d9488;color:#fff;
@@ -260,6 +323,7 @@
     if (c.state === 'plain') chips.appendChild(chip('— DS neutre —', '#94a3b8'));
     selCard.appendChild(chips);
     selCard.appendChild(h('div', { class: 'bdr-anchor', text: '<' + d.tag + '>  ' + d.text_anchor }));
+    selCard.appendChild(propsBlock(selected));
 
     verbsBox.appendChild(h('button', { class: 'bdr-v', text: '🔁 Remplacer', onclick: showSwap }));
     if (c.candidat.length) verbsBox.appendChild(h('button', { class: 'bdr-v promote', text: '✨ Ajouter au DS',
@@ -281,17 +345,24 @@
   function showSwap() {
     if (!selected) return;
     dynBox.innerHTML = '';
-    const search = h('input', { id: 'bdr-search', placeholder: 'Chercher une classe DS validee...' });
+    const search = h('input', { id: 'bdr-search', placeholder: 'Chercher une classe...' });
     const list = h('div', {});
-    const all = Array.from(CAT.validated).sort();
+    const groups = (CAT.groups && CAT.groups.length) ? CAT.groups
+      : [{ title: 'Classes', items: Array.from(CAT.validated).concat(Array.from(CAT.proposed)).sort().map(function (n) { return { name: n, proposed: CAT.proposed.has(n) }; }) }];
+    function optEl(it) {
+      const opt = h('div', { class: 'bdr-opt' + (it.proposed ? ' prop' : ''), text: (it.proposed ? '✨ ' : '') + it.name });
+      opt.addEventListener('mouseenter', function () { swapPreview(it.name); });
+      opt.addEventListener('mouseleave', function () { restorePreview(); });
+      opt.addEventListener('click', function () { previewOrig = null; record(selected, 'swap', { proposition: it.name }); });
+      return opt;
+    }
     function fill(q) {
       list.innerHTML = '';
-      all.filter(function (n) { return n.indexOf(q) !== -1; }).slice(0, 250).forEach(function (n) {
-        const opt = h('div', { class: 'bdr-opt', text: n });
-        opt.addEventListener('mouseenter', function () { swapPreview(n); });
-        opt.addEventListener('mouseleave', function () { restorePreview(); });
-        opt.addEventListener('click', function () { previewOrig = null; record(selected, 'swap', { proposition: n }); });
-        list.appendChild(opt);
+      groups.forEach(function (g) {
+        const items = g.items.filter(function (it) { return it.name.indexOf(q) !== -1; });
+        if (!items.length) return;
+        list.appendChild(h('div', { class: 'bdr-optgroup', text: g.title }));
+        items.forEach(function (it) { list.appendChild(optEl(it)); });
       });
     }
     search.addEventListener('input', function () { fill(search.value.trim()); });
@@ -360,6 +431,7 @@
   /* ---- boot --------------------------------------------------------------- */
   root.appendChild(style); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
+  buildTokens();
   renderRes(); renderTray(); renderSelected(); paint();
 
   window.__bdr = { toggle: toggle, feedbacks: feedbacks, export: exportJSON };

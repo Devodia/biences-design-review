@@ -77,5 +77,388 @@
     "progress-track-style",
     "section-label-style",
     "selection-card-style"
+  ],
+  "groups": [
+    {
+      "title": "Textes",
+      "items": [
+        {
+          "name": "default-style",
+          "proposed": false
+        },
+        {
+          "name": "micro-text-style",
+          "proposed": true
+        },
+        {
+          "name": "small-text-style",
+          "proposed": false
+        },
+        {
+          "name": "text-bold-style",
+          "proposed": false
+        },
+        {
+          "name": "text-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Titres — police 1",
+      "items": [
+        {
+          "name": "font1-bold-title-style",
+          "proposed": false
+        },
+        {
+          "name": "font1-medium-slogan-style",
+          "proposed": false
+        },
+        {
+          "name": "font1-medium-title-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Titres — police 2",
+      "items": [
+        {
+          "name": "font2-big-title-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-cta-slogan-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-slideshow-slogan-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-small-italic-title-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-small-smaller-title-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-small-title-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-text-italic-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-title-italic-style",
+          "proposed": false
+        },
+        {
+          "name": "font2-title-style",
+          "proposed": false
+        },
+        {
+          "name": "sherborne-title-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Sous-titres & slogans",
+      "items": [
+        {
+          "name": "heavy-subtitle-uppercase-style",
+          "proposed": false
+        },
+        {
+          "name": "light-subtitle-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Boutons (CTA)",
+      "items": [
+        {
+          "name": "add-to-cart-11-style",
+          "proposed": false
+        },
+        {
+          "name": "add-to-cart-12-style",
+          "proposed": false
+        },
+        {
+          "name": "cta-1-style",
+          "proposed": false
+        },
+        {
+          "name": "cta-2-style",
+          "proposed": false
+        },
+        {
+          "name": "cta-3-style",
+          "proposed": false
+        },
+        {
+          "name": "cta-4-style",
+          "proposed": false
+        },
+        {
+          "name": "cta-important-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Boutons-icônes",
+      "items": [
+        {
+          "name": "icon-button-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Formulaires",
+      "items": [
+        {
+          "name": "form-label-checkbox-style",
+          "proposed": false
+        },
+        {
+          "name": "form-label-style",
+          "proposed": false
+        },
+        {
+          "name": "select-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Prix & produit (shop)",
+      "items": [
+        {
+          "name": "shop-product-base-price-style",
+          "proposed": false
+        },
+        {
+          "name": "shop-product-description-style",
+          "proposed": false
+        },
+        {
+          "name": "shop-product-discount-style",
+          "proposed": false
+        },
+        {
+          "name": "shop-product-fake-discount-style",
+          "proposed": false
+        },
+        {
+          "name": "shop-product-price-style",
+          "proposed": false
+        },
+        {
+          "name": "shop-product-title-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Fiche produit",
+      "items": [
+        {
+          "name": "ppp-style",
+          "proposed": false
+        },
+        {
+          "name": "product-inci-style",
+          "proposed": false
+        },
+        {
+          "name": "product-instead-style",
+          "proposed": false
+        },
+        {
+          "name": "product-name-style",
+          "proposed": false
+        },
+        {
+          "name": "product-score-style",
+          "proposed": false
+        },
+        {
+          "name": "product-step-mc-style",
+          "proposed": false
+        },
+        {
+          "name": "product-step-style",
+          "proposed": false
+        },
+        {
+          "name": "unavailable-2-style",
+          "proposed": false
+        },
+        {
+          "name": "unavailable-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Menu / navigation",
+      "items": [
+        {
+          "name": "menu-bottom-link-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-cart-qty-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-link-hover-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-link-mc-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-link-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-post-title-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-promo-bar-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-responsive-lang-link-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-responsive-link-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-responsive-search-placeholder-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-responsive-search-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-sub-link-style",
+          "proposed": false
+        },
+        {
+          "name": "menu-top-link-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Footer",
+      "items": [
+        {
+          "name": "footer-address-style",
+          "proposed": false
+        },
+        {
+          "name": "footer-copyright-style",
+          "proposed": false
+        },
+        {
+          "name": "footer-link-hover-style",
+          "proposed": false
+        },
+        {
+          "name": "footer-links-title-style",
+          "proposed": false
+        }
+      ]
+    },
+    {
+      "title": "Cartes & conteneurs",
+      "items": [
+        {
+          "name": "panel-card-style",
+          "proposed": true
+        },
+        {
+          "name": "selection-card-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Puces & badges",
+      "items": [
+        {
+          "name": "count-badge-style",
+          "proposed": true
+        },
+        {
+          "name": "filter-chip-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Liens & labels",
+      "items": [
+        {
+          "name": "link-subtle-style",
+          "proposed": true
+        },
+        {
+          "name": "section-label-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Jauges & barres",
+      "items": [
+        {
+          "name": "progress-fill-style",
+          "proposed": true
+        },
+        {
+          "name": "progress-track-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Listes",
+      "items": [
+        {
+          "name": "arguments-list-style",
+          "proposed": true
+        }
+      ]
+    },
+    {
+      "title": "Divers",
+      "items": [
+        {
+          "name": "fidelity-offer-title-style",
+          "proposed": false
+        },
+        {
+          "name": "promoted-product-name-style",
+          "proposed": false
+        }
+      ]
+    }
   ]
 }
