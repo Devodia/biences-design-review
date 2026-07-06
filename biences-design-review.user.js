@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.1.0
+// @version      0.2.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -217,7 +217,7 @@
   const countStyle = h('span', { class: 'bdr-badge', text: '✅ 0  ✨ 0' });
   const countBadge = h('span', { class: 'bdr-badge', text: '0 retour' });
   const allBtn = h('button', { class: 'bdr-btn mini', text: 'Candidats seuls', onclick: toggleAll });
-  const pauseBtn = h('button', { class: 'bdr-btn pause', text: '⏸ Suspendre', onclick: toggle });
+  const pauseBtn = h('button', { class: 'bdr-btn pause', title: 'Suspendre la revue (Alt+R)', text: '⏸ Suspendre', onclick: toggle });
   const exportBtn = h('button', { class: 'bdr-btn exp', text: 'Exporter', onclick: exportJSON });
   const hoverLine = h('div', { class: 'bdr-hover', text: 'Survole un element...' });
   const selCard = h('div', { class: 'sec' });
@@ -226,15 +226,15 @@
 
   const panel = h('div', { id: 'bdr-panel' },
     h('div', { class: 'hd' }, h('b', { text: 'Design Review' }),
-      h('div', { class: 'bdr-hg' }, h('span', { class: 'bdr-kbd', text: 'Alt+R' }), pauseBtn,
-        h('button', { class: 'bdr-icon', title: 'Reduire', text: '⟩', onclick: collapse }))),
+      h('div', { class: 'bdr-hg' }, pauseBtn,
+        h('button', { class: 'bdr-btn mini', title: 'Cacher le panneau (rouvre via l onglet a droite)', text: '⟩ Cacher', onclick: collapse }))),
     h('div', { class: 'sec' }, h('div', { class: 'bdr-row' }, resBadge, countStyle),
       h('div', { class: 'bdr-row', style: 'margin-top:8px' }, hoverLine)),
     h('div', { class: 'sec' }, allBtn),
     selCard, verbsBox, dynBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
-  const reopen = h('div', { id: 'bdr-reopen', text: '◀ REVIEW', onclick: expand });
+  const reopen = h('div', { id: 'bdr-reopen', title: 'Rouvrir le panneau', text: '◀ Panneau', onclick: expand });
 
   /* ---- selection + rendu -------------------------------------------------- */
   function select(el) {
