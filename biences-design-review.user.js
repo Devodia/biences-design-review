@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.4.0
+// @version      0.5.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -236,6 +236,7 @@
       .bdr-btn:hover{filter:brightness(1.15);}
       .bdr-btn.pause{background:#ea580c;} .bdr-btn.paused{background:#16a34a;}
       .bdr-btn.exp{background:#16a34a;flex:1;} .bdr-btn.mini{padding:5px 9px;font-size:11px;background:#475569;}
+      .bdr-btn.bg{margin-top:8px;width:100%;background:#0d9488;}
       .bdr-icon{cursor:pointer;background:none;border:none;color:#cbd5e1;font-size:16px;line-height:1;padding:2px 4px;}
       .bdr-hover{color:#94a3b8;min-height:18px;font-size:11px;word-break:break-word;}
       .bdr-hover .up{color:#fbbf24;}
@@ -322,6 +323,18 @@
     while (n && n.parentElement !== selected) n = n.parentElement;
     if (n) setSel(n);
   }
+  function bgOf(el) {
+    const v = getComputedStyle(el).backgroundColor;
+    return (v && v !== 'rgba(0, 0, 0, 0)' && v !== 'transparent') ? v : null;
+  }
+  function climbToBg() {                                  // remonte au + proche parent qui porte un fond
+    let n = selected ? selected.parentElement : null;
+    while (n && n.nodeType === 1 && !n.closest('#bdr-root') && n !== document.documentElement) {
+      if (bgOf(n)) { setSel(n); return; }
+      n = n.parentElement;
+    }
+    toast('Aucun parent avec un fond');
+  }
 
   function renderSelected() {
     verbsBox.innerHTML = '';
@@ -343,6 +356,7 @@
     selCard.appendChild(chips);
     selCard.appendChild(h('div', { class: 'bdr-anchor', text: '<' + d.tag + '>  ' + d.text_anchor }));
     selCard.appendChild(propsBlock(selected));
+    if (!bgOf(selected)) selCard.appendChild(h('button', { class: 'bdr-btn bg', text: "↑ Aller à l'élément avec fond", onclick: climbToBg }));
 
     verbsBox.appendChild(h('button', { class: 'bdr-v', text: '🔁 Remplacer', onclick: showSwap }));
     if (c.candidat.length) verbsBox.appendChild(h('button', { class: 'bdr-v promote', text: '✨ Ajouter au DS',
