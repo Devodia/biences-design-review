@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.5.0
+// @version      0.6.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -139,7 +139,19 @@
       rows.push([label, v, TOKENS[v] || null]);
     }
     function plain(label, v) { if (v && v !== 'normal' && v !== '0px') rows.push([label, v, null]); }
-    color('fond', 'background-color');
+    const ownC = cs.backgroundColor, ownI = cs.backgroundImage;
+    const hasC = ownC && ownC !== 'rgba(0, 0, 0, 0)' && ownC !== 'transparent';
+    const hasI = ownI && ownI !== 'none';
+    if (hasC) rows.push(['fond', ownC, TOKENS[ownC] || null]);
+    if (hasI) rows.push(['fond img', ownI.length > 60 ? ownI.slice(0, 60) + '…' : ownI, null]);
+    if (!hasC && !hasI) {                                 // fond effectif herite d'un parent
+      let n = el.parentElement;
+      while (n && n.nodeType === 1 && !n.closest('#bdr-root')) {
+        const b = bgOf(n);
+        if (b) { rows.push(['fond ↑', b.length > 46 ? b.slice(0, 46) + '…' : b, TOKENS[b] || null]); break; }
+        n = n.parentElement;
+      }
+    }
     color('texte', 'color');
     if (cs.borderTopStyle !== 'none' && cs.borderTopWidth !== '0px') {
       const bc = cs.borderTopColor.trim();
@@ -324,8 +336,11 @@
     if (n) setSel(n);
   }
   function bgOf(el) {
-    const v = getComputedStyle(el).backgroundColor;
-    return (v && v !== 'rgba(0, 0, 0, 0)' && v !== 'transparent') ? v : null;
+    const cs = getComputedStyle(el);
+    const c = cs.backgroundColor, img = cs.backgroundImage;
+    if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+    if (img && img !== 'none') return img;
+    return null;
   }
   function climbToBg() {                                  // remonte au + proche parent qui porte un fond
     let n = selected ? selected.parentElement : null;
