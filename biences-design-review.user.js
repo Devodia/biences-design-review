@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.6.0
+// @version      0.7.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -63,6 +63,23 @@
       n = n.parentElement;
     }
     return null;
+  }
+  function isBlock(el) {                                  // element "signifiant" : bordure / fond / classe -style
+    if (hasStyle(el)) return true;
+    const cs = getComputedStyle(el);
+    if (cs.borderTopStyle !== 'none' && cs.borderTopWidth !== '0px') return true;
+    const c = cs.backgroundColor, img = cs.backgroundImage;
+    if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return true;
+    if (img && img !== 'none') return true;
+    return false;
+  }
+  function toBlock(el) {                                  // remonte au + proche block signifiant (ou l'element)
+    let n = el;
+    while (n && n.nodeType === 1 && !n.closest('#bdr-root') && n !== document.body && n !== document.documentElement) {
+      if (isBlock(n)) return n;
+      n = n.parentElement;
+    }
+    return el;
   }
   function classify(el) {
     const ds = [], candidat = [];
@@ -322,7 +339,7 @@
     selected = el; if (el) el.setAttribute('data-bdr-sel', '');
     renderSelected();
   }
-  function select(el) { selPath = el; setSel(el); expand(); }
+  function select(el) { selPath = el; setSel(toBlock(el)); expand(); }
   function deselect() { if (selected) selected.removeAttribute('data-bdr-sel'); selected = null; selPath = null; renderSelected(); }
   function navUp() {
     if (!selected) return;
@@ -470,7 +487,8 @@
   /* ---- listeners ---------------------------------------------------------- */
   document.addEventListener('mouseover', function (e) {
     if (!reviewMode || e.target.closest('#bdr-root')) { clearHover(); return; }
-    setHover(e.target); showHoverInfo(e.target);
+    const t = toBlock(e.target);
+    setHover(t); showHoverInfo(t);
   }, true);
   document.addEventListener('click', function (e) {
     if (!reviewMode) return;
