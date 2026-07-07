@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.7.0
+// @version      0.8.0
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -493,8 +493,19 @@
   document.addEventListener('click', function (e) {
     if (!reviewMode) return;
     if (e.target.closest('#bdr-root')) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault(); e.stopImmediatePropagation();
     select(e.target);
+  }, true);
+  // Mode review : neutraliser toute action de la page (add-to-cart, submit, liens, handlers mousedown...).
+  ['mousedown', 'mouseup', 'pointerdown', 'pointerup', 'dblclick'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
+      e.stopImmediatePropagation();
+    }, true);
+  });
+  document.addEventListener('submit', function (e) {
+    if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
   }, true);
   addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); });
   addEventListener('keydown', function (e) { if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); } });
