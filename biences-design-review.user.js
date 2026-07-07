@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.10.0
-// (defaut cible exact + toggle block + start paused + boite overlay)
+// @version      0.11.0
+// (detecte les classes DS inertes/ecrasees + exact + start paused + boite overlay)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -52,6 +52,7 @@
   let selected = null;
   let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
   let selPath = null;   // element exact clique (pour redescendre apres un ↑ parent)
+  let lastStack = [];   // elements empiles sous le curseur au dernier clic (pour percer les overlays)
 
   /* ---- primitives DS ------------------------------------------------------ */
   function hasStyle(el) {
@@ -191,6 +192,16 @@
     return box;
   }
 
+  function fontSig(cs) { return [cs.fontFamily, cs.fontSize, cs.fontWeight, cs.fontStyle, cs.color, cs.backgroundColor, cs.textTransform, cs.letterSpacing, cs.lineHeight, cs.textDecorationLine].join('|'); }
+  function dsClassInert(el) {                             // la classe -style ne change RIEN au rendu ? (ecrasee par une regle locale)
+    if (!Array.prototype.some.call(el.classList, function (c) { return c.endsWith('-style'); })) return false;
+    const before = fontSig(getComputedStyle(el));
+    const orig = classAttr(el);
+    el.setAttribute('class', orig.split(/\s+/).filter(function (c) { return c && !c.endsWith('-style'); }).join(' '));
+    const after = fontSig(getComputedStyle(el));
+    el.setAttribute('class', orig);
+    return before === after;
+  }
   const breakpoint = function () { return innerWidth < 768 ? 'mobile' : innerWidth < 1024 ? 'tablet' : 'desktop'; };
   const classAttr = function (el) { return el.getAttribute('class') || ''; };   // SVG-safe
 
@@ -302,6 +313,12 @@
       .bdr-prop .k{color:#94a3b8;min-width:50px;}
       .bdr-prop .v{color:#e2e8f0;font-family:ui-monospace,monospace;word-break:break-all;}
       .bdr-prop .tok{color:#34d399;font-family:ui-monospace,monospace;background:#34d39922;padding:0 5px;border-radius:4px;}
+      .bdr-warn{margin-top:8px;font-size:11px;color:#fcd34d;background:#78350f66;border:1px solid #92400e;border-radius:6px;padding:6px 8px;line-height:1.4;}
+      .bdr-stack{margin-top:9px;border-top:1px solid #334155;padding-top:6px;}
+      .bdr-stack-t{color:#93c5fd;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+      .bdr-stack-row{cursor:pointer;padding:2px 6px;border-radius:5px;font-family:ui-monospace,monospace;font-size:11px;color:#cbd5e1;}
+      .bdr-stack-row:hover{background:#334155;}
+      .bdr-stack-row.on{background:#f9731633;color:#fdba74;}
       .bdr-verbs{display:flex;flex-wrap:wrap;gap:6px;padding:11px 14px;}
       .bdr-v{cursor:pointer;border:1px solid #475569;background:#334155;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;}
       .bdr-v:hover{background:#475569;} .bdr-v.promote{border-color:#3b82f6;color:#93c5fd;}
@@ -404,6 +421,16 @@
     selCard.appendChild(h('div', { class: 'bdr-anchor', text: '<' + d.tag + '>  ' + d.text_anchor }));
     selCard.appendChild(propsBlock(selected));
     if (!bgOf(selected)) selCard.appendChild(h('button', { class: 'bdr-btn bg', text: "↑ Aller à l'élément avec fond", onclick: climbToBg }));
+    if (dsClassInert(selected)) selCard.appendChild(h('div', { class: 'bdr-warn', text: "⚠ Classe DS sans effet ici — une règle locale l'écrase. Un swap ne changera pas le rendu." }));
+    if (lastStack.length > 1) {
+      const sw = h('div', { class: 'bdr-stack' }, h('div', { class: 'bdr-stack-t', text: 'Sous le curseur (perce les overlays)' }));
+      lastStack.slice(0, 8).forEach(function (el) {
+        const cls = classAttr(el).trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+        const label = '<' + el.tagName.toLowerCase() + '>' + (cls ? ' .' + cls : '');
+        sw.appendChild(h('div', { class: 'bdr-stack-row' + (el === selected ? ' on' : ''), text: label, onclick: function () { setSel(el); } }));
+      });
+      selCard.appendChild(sw);
+    }
 
     verbsBox.appendChild(h('button', { class: 'bdr-v', text: '🔁 Remplacer', onclick: showSwap }));
     if (c.candidat.length) verbsBox.appendChild(h('button', { class: 'bdr-v promote', text: '✨ Ajouter au DS',
@@ -510,6 +537,7 @@
     if (!reviewMode) return;
     if (e.target.closest('#bdr-root')) return;
     e.preventDefault(); e.stopImmediatePropagation();
+    lastStack = document.elementsFromPoint(e.clientX, e.clientY).filter(function (el) { return !el.closest('#bdr-root'); });
     select(e.target);
   }, true);
   // Mode review : neutraliser toute action de la page (add-to-cart, submit, liens, handlers mousedown...).
