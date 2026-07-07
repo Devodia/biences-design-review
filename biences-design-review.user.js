@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.8.0
+// @version      0.9.0
+// (start paused + toggle cible block/exact + boite overlay)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -45,8 +46,9 @@
   const CAT = { validated: new Set(CAT_DATA.validated), proposed: new Set(CAT_DATA.proposed), groups: CAT_DATA.groups || [] };
 
   const feedbacks = [];
-  let reviewMode = true;
+  let reviewMode = false;   // demarre EN PAUSE : on lance la revue quand on veut
   let showAll = false;
+  let blockMode = true;     // clic = block signifiant ; false = element exact sous le curseur
   let selected = null;
   let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
   let selPath = null;   // element exact clique (pour redescendre apres un ↑ parent)
@@ -236,6 +238,16 @@
     return e;
   }
   function chip(name, col) { return h('span', { class: 'bdr-chip', style: 'background:' + col + '22;color:' + col, text: name }); }
+  const hovBox = h('div', { id: 'bdr-hovbox' });
+  const selBox = h('div', { id: 'bdr-selbox' });
+  function boxAt(box, el) {                               // cale une boite fixed sur le rect reel de l'element
+    if (!el) { box.style.display = 'none'; return; }
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.style.left = r.left + 'px'; box.style.top = r.top + 'px';
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
+  }
 
   /* ---- UI root + styles --------------------------------------------------- */
   const root = h('div', { id: 'bdr-root' });
@@ -248,6 +260,9 @@
       [data-bdr-v]{outline:2px solid #0d9488 !important;outline-offset:2px !important;}
       [data-bdr-hover]{outline:2px dotted #f59e0b !important;outline-offset:2px !important;cursor:crosshair !important;}
       [data-bdr-sel]{outline:3px solid #f97316 !important;outline-offset:2px !important;}
+      #bdr-hovbox,#bdr-selbox{position:fixed;pointer-events:none;display:none;border-radius:3px;}
+      #bdr-hovbox{border:2px dotted #f59e0b;}
+      #bdr-selbox{border:3px solid #f97316;box-shadow:0 0 0 1px rgba(249,115,22,.3);}
       #bdr-panel{position:fixed;top:0;right:0;bottom:0;width:322px;z-index:${Z};pointer-events:auto;
         background:#1e293b;color:#e2e8f0;font-size:12px;display:flex;flex-direction:column;
         box-shadow:-8px 0 30px rgba(0,0,0,.35);transition:transform .2s ease;}
@@ -314,7 +329,8 @@
   const countStyle = h('span', { class: 'bdr-badge', text: '✅ 0  ✨ 0' });
   const countBadge = h('span', { class: 'bdr-badge', text: '0 retour' });
   const allBtn = h('button', { class: 'bdr-btn mini', text: 'Candidats seuls', onclick: toggleAll });
-  const pauseBtn = h('button', { class: 'bdr-btn pause', title: 'Suspendre la revue (Alt+R)', text: '⏸ Suspendre', onclick: toggle });
+  const targetBtn = h('button', { class: 'bdr-btn mini', title: 'Granularite du clic', text: 'Cible: block', onclick: toggleTarget });
+  const pauseBtn = h('button', { class: 'bdr-btn paused', title: 'Lancer / suspendre la revue (Alt+R)', text: '▶ Lancer la revue', onclick: toggle });
   const exportBtn = h('button', { class: 'bdr-btn exp', text: 'Exporter', onclick: exportJSON });
   const hoverLine = h('div', { class: 'bdr-hover', text: 'Survole un element...' });
   const selCard = h('div', { class: 'sec' });
@@ -327,7 +343,7 @@
         h('button', { class: 'bdr-btn mini', title: 'Cacher le panneau (rouvre via l onglet a droite)', text: '⟩ Cacher', onclick: collapse }))),
     h('div', { class: 'sec' }, h('div', { class: 'bdr-row' }, resBadge, countStyle),
       h('div', { class: 'bdr-row', style: 'margin-top:8px' }, hoverLine)),
-    h('div', { class: 'sec' }, allBtn),
+    h('div', { class: 'sec' }, h('div', { class: 'bdr-row' }, allBtn, targetBtn)),
     selCard, verbsBox, dynBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
@@ -335,12 +351,11 @@
 
   /* ---- selection + rendu -------------------------------------------------- */
   function setSel(el) {
-    if (selected) selected.removeAttribute('data-bdr-sel');
-    selected = el; if (el) el.setAttribute('data-bdr-sel', '');
+    selected = el; boxAt(selBox, el);
     renderSelected();
   }
-  function select(el) { selPath = el; setSel(toBlock(el)); expand(); }
-  function deselect() { if (selected) selected.removeAttribute('data-bdr-sel'); selected = null; selPath = null; renderSelected(); }
+  function select(el) { selPath = el; setSel(blockMode ? toBlock(el) : el); expand(); }
+  function deselect() { selected = null; selPath = null; selBox.style.display = 'none'; renderSelected(); }
   function navUp() {
     if (!selected) return;
     const p = selected.parentElement;
@@ -403,9 +418,9 @@
     if (!selected) return;
     if (previewOrig === null) previewOrig = classAttr(selected);
     const kept = classAttr(selected).split(/\s+/).filter(function (c) { return c && !c.endsWith('-style'); });
-    kept.push(cls); selected.setAttribute('class', kept.join(' '));
+    kept.push(cls); selected.setAttribute('class', kept.join(' ')); boxAt(selBox, selected);
   }
-  function restorePreview() { if (selected && previewOrig !== null) selected.setAttribute('class', previewOrig); previewOrig = null; }
+  function restorePreview() { if (selected && previewOrig !== null) { selected.setAttribute('class', previewOrig); boxAt(selBox, selected); } previewOrig = null; }
 
   function showSwap() {
     if (!selected) return;
@@ -447,6 +462,7 @@
   function renderRes() { resBadge.textContent = breakpoint() + ' ' + innerWidth + '×' + innerHeight; }
   function renderTray() { countBadge.textContent = feedbacks.length + ' retour' + (feedbacks.length > 1 ? 's' : ''); }
   function toggleAll() { showAll = !showAll; allBtn.textContent = showAll ? 'Tout surligne' : 'Candidats seuls'; if (reviewMode) paint(); }
+  function toggleTarget() { blockMode = !blockMode; targetBtn.textContent = blockMode ? 'Cible: block' : 'Cible: exact'; }
   function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; }
   function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; }
 
@@ -468,8 +484,8 @@
 
   /* ---- hover -------------------------------------------------------------- */
   let hovered = null;
-  function setHover(el) { if (hovered && hovered !== el) hovered.removeAttribute('data-bdr-hover'); hovered = el; if (el) el.setAttribute('data-bdr-hover', ''); }
-  function clearHover() { if (hovered) hovered.removeAttribute('data-bdr-hover'); hovered = null; hoverLine.innerHTML = 'Survole un element...'; }
+  function setHover(el) { hovered = el; boxAt(hovBox, el); }
+  function clearHover() { hovered = null; hovBox.style.display = 'none'; hoverLine.innerHTML = 'Survole un element...'; }
   function showHoverInfo(el) {
     const c = classify(el);
     const names = c.ds.concat(c.candidat);
@@ -487,7 +503,7 @@
   /* ---- listeners ---------------------------------------------------------- */
   document.addEventListener('mouseover', function (e) {
     if (!reviewMode || e.target.closest('#bdr-root')) { clearHover(); return; }
-    const t = toBlock(e.target);
+    const t = blockMode ? toBlock(e.target) : e.target;
     setHover(t); showHoverInfo(t);
   }, true);
   document.addEventListener('click', function (e) {
@@ -507,15 +523,16 @@
     if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
-  addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); });
+  addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); boxAt(selBox, selected); boxAt(hovBox, hovered); });
+  addEventListener('scroll', function () { if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); }, true);
   addEventListener('keydown', function (e) { if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); } });
 
   /* ---- boot --------------------------------------------------------------- */
-  root.appendChild(style); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
+  root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
   buildTokens();
-  renderRes(); renderTray(); renderSelected(); paint();
+  renderRes(); renderTray(); renderSelected(); if (reviewMode) paint();
 
   window.__bdr = { toggle: toggle, feedbacks: feedbacks, export: exportJSON };
-  console.log('[BDR] pret —', CAT.validated.size, 'validees,', CAT.proposed.size, 'proposees. Clic = selectionner, panneau droit = agir, Alt+R = suspendre.');
+  console.log('[BDR] pret (EN PAUSE) —', CAT.validated.size, 'validees,', CAT.proposed.size, 'proposees. Bouton "▶ Lancer la revue" ou Alt+R pour demarrer.');
 })();
