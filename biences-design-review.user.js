@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.12.0
-// (rapport enrichi: id + open_tag + classes completes + css_path ancre + swap from->proposition)
+// @version      0.13.0
+// (zero config : retrait toggles candidats/tout et cible exact/block ; defauts figes)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -47,8 +47,6 @@
 
   const feedbacks = [];
   let reviewMode = false;   // demarre EN PAUSE : on lance la revue quand on veut
-  let showAll = false;
-  let blockMode = false;    // false = element exact sous le curseur (defaut) ; true = block signifiant
   let selected = null;
   let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
   let selPath = null;   // element exact clique (pour redescendre apres un ↑ parent)
@@ -66,23 +64,6 @@
       n = n.parentElement;
     }
     return null;
-  }
-  function isBlock(el) {                                  // element "signifiant" : bordure / fond / classe -style
-    if (hasStyle(el)) return true;
-    const cs = getComputedStyle(el);
-    if (cs.borderTopStyle !== 'none' && cs.borderTopWidth !== '0px') return true;
-    const c = cs.backgroundColor, img = cs.backgroundImage;
-    if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return true;
-    if (img && img !== 'none') return true;
-    return false;
-  }
-  function toBlock(el) {                                  // remonte au + proche block signifiant (ou l'element)
-    let n = el;
-    while (n && n.nodeType === 1 && !n.closest('#bdr-root') && n !== document.body && n !== document.documentElement) {
-      if (isBlock(n)) return n;
-      n = n.parentElement;
-    }
-    return el;
   }
   function classify(el) {
     const ds = [], candidat = [];
@@ -241,8 +222,7 @@
       if (el.closest('#bdr-root')) return;
       const st = classify(el).state;
       if (st === 'candidat') { nCand++; el.setAttribute('data-bdr', 'candidat'); }
-      else if (st === 'ds') { nDs++; if (showAll) el.setAttribute('data-bdr', 'ds'); else el.removeAttribute('data-bdr'); }
-      else el.removeAttribute('data-bdr');
+      else { if (st === 'ds') nDs++; el.removeAttribute('data-bdr'); }
     });
     countStyle.textContent = '✅ ' + nDs + '  ✨ ' + nCand;
   }
@@ -361,8 +341,6 @@
   const resBadge = h('span', { class: 'bdr-badge' });
   const countStyle = h('span', { class: 'bdr-badge', text: '✅ 0  ✨ 0' });
   const countBadge = h('span', { class: 'bdr-badge', text: '0 retour' });
-  const allBtn = h('button', { class: 'bdr-btn mini', text: 'Candidats seuls', onclick: toggleAll });
-  const targetBtn = h('button', { class: 'bdr-btn mini', title: 'Granularite du clic', text: 'Cible: exact', onclick: toggleTarget });
   const pauseBtn = h('button', { class: 'bdr-btn paused', title: 'Lancer / suspendre la revue (Alt+R)', text: '▶ Lancer la revue', onclick: toggle });
   const exportBtn = h('button', { class: 'bdr-btn exp', text: 'Exporter', onclick: exportJSON });
   const hoverLine = h('div', { class: 'bdr-hover', text: 'Survole un element...' });
@@ -376,7 +354,6 @@
         h('button', { class: 'bdr-btn mini', title: 'Cacher le panneau (rouvre via l onglet a droite)', text: '⟩ Cacher', onclick: collapse }))),
     h('div', { class: 'sec' }, h('div', { class: 'bdr-row' }, resBadge, countStyle),
       h('div', { class: 'bdr-row', style: 'margin-top:8px' }, hoverLine)),
-    h('div', { class: 'sec' }, h('div', { class: 'bdr-row' }, allBtn, targetBtn)),
     selCard, verbsBox, dynBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
@@ -387,7 +364,7 @@
     selected = el; boxAt(selBox, el);
     renderSelected();
   }
-  function select(el) { selPath = el; setSel(blockMode ? toBlock(el) : el); expand(); }
+  function select(el) { selPath = el; setSel(el); expand(); }
   function deselect() { selected = null; selPath = null; selBox.style.display = 'none'; renderSelected(); }
   function navUp() {
     if (!selected) return;
@@ -509,8 +486,6 @@
   /* ---- barre : divers ----------------------------------------------------- */
   function renderRes() { resBadge.textContent = breakpoint() + ' ' + innerWidth + '×' + innerHeight; }
   function renderTray() { countBadge.textContent = feedbacks.length + ' retour' + (feedbacks.length > 1 ? 's' : ''); }
-  function toggleAll() { showAll = !showAll; allBtn.textContent = showAll ? 'Tout surligne' : 'Candidats seuls'; if (reviewMode) paint(); }
-  function toggleTarget() { blockMode = !blockMode; targetBtn.textContent = blockMode ? 'Cible: block' : 'Cible: exact'; }
   function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; }
   function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; }
 
@@ -551,8 +526,7 @@
   /* ---- listeners ---------------------------------------------------------- */
   document.addEventListener('mouseover', function (e) {
     if (!reviewMode || e.target.closest('#bdr-root')) { clearHover(); return; }
-    const t = blockMode ? toBlock(e.target) : e.target;
-    setHover(t); showHoverInfo(t);
+    setHover(e.target); showHoverInfo(e.target);
   }, true);
   document.addEventListener('click', function (e) {
     if (!reviewMode) return;
