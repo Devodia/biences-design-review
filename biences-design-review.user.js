@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.11.0
-// (detecte les classes DS inertes/ecrasees + exact + start paused + boite overlay)
+// @version      0.12.0
+// (rapport enrichi: id + open_tag + classes completes + css_path ancre + swap from->proposition)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -98,8 +98,9 @@
     return { state, ds, candidat, override };
   }
   function describe(el) {
+    // css_path ancre sur le + proche id (self ou ancetre), sans plafond -> unique
     const parts = []; let n = el;
-    while (n && n.nodeType === 1 && parts.length < 6) {
+    while (n && n.nodeType === 1 && !n.closest('#bdr-root')) {
       if (n.id) { parts.unshift('#' + CSS.escape(n.id)); break; }
       let seg = n.tagName.toLowerCase();
       const p = n.parentElement;
@@ -109,9 +110,23 @@
       }
       parts.unshift(seg); n = n.parentElement;
     }
+    // id de l'element ou du + proche ancetre porteur d'un id
+    let a = el, id = '';
+    while (a && a.nodeType === 1 && !a.closest('#bdr-root')) { if (a.id) { id = a.id; break; } a = a.parentElement; }
+    // tag d'ouverture = ancre grep vers le template (attributs internes exclus)
+    let open = '<' + el.tagName.toLowerCase();
+    Array.prototype.forEach.call(el.attributes, function (at) {
+      if (at.name === 'style' || at.name.indexOf('data-bdr') === 0) return;
+      open += ' ' + at.name + (at.value ? '="' + at.value + '"' : '');
+    });
+    open += '>';
+    if (open.length > 240) open = open.slice(0, 240) + '…';
     const r = el.getBoundingClientRect();
     return {
       css_path: parts.join(' > '),
+      id: id,
+      open_tag: open,
+      classes_all: classAttr(el).trim().split(/\s+/).filter(Boolean),
       text_anchor: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60),
       tag: el.tagName.toLowerCase(),
       rect: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }
@@ -210,8 +225,9 @@
     feedbacks.push(Object.assign({
       verdict: verdict, url: location.pathname, ts: new Date().toISOString(),
       breakpoint: breakpoint(), viewport: innerWidth + 'x' + innerHeight,
-      css_path: d.css_path, text_anchor: d.text_anchor, tag: d.tag, rect: d.rect,
-      classes: { ds: c.ds, candidat: c.candidat, override: c.override }
+      tag: d.tag, id: d.id, open_tag: d.open_tag, text_anchor: d.text_anchor,
+      css_path: d.css_path, rect: d.rect,
+      classes: { ds: c.ds, candidat: c.candidat, override: c.override, all: d.classes_all }
     }, extra || {}));
     el.setAttribute('data-bdr-v', verdict);
     renderTray(); renderSelected();
@@ -460,7 +476,12 @@
       const opt = h('div', { class: 'bdr-opt' + (it.proposed ? ' prop' : ''), text: (it.proposed ? '✨ ' : '') + it.name });
       opt.addEventListener('mouseenter', function () { swapPreview(it.name); });
       opt.addEventListener('mouseleave', function () { restorePreview(); });
-      opt.addEventListener('click', function () { previewOrig = null; record(selected, 'swap', { proposition: it.name }); });
+      opt.addEventListener('click', function () {
+        const original = (previewOrig !== null ? previewOrig : classAttr(selected));
+        const from = original.split(/\s+/).filter(function (c) { return c.endsWith('-style'); });
+        selected.setAttribute('class', original); previewOrig = null; boxAt(selBox, selected);   // enregistre l'ETAT ORIGINAL
+        record(selected, 'swap', { from: from, proposition: it.name });
+      });
       return opt;
     }
     function fill(q) {
