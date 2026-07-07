@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.9.0
-// (start paused + toggle cible block/exact + boite overlay)
+// @version      0.10.0
+// (defaut cible exact + toggle block + start paused + boite overlay)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -48,7 +48,7 @@
   const feedbacks = [];
   let reviewMode = false;   // demarre EN PAUSE : on lance la revue quand on veut
   let showAll = false;
-  let blockMode = true;     // clic = block signifiant ; false = element exact sous le curseur
+  let blockMode = false;    // false = element exact sous le curseur (defaut) ; true = block signifiant
   let selected = null;
   let TOKENS = {};   // couleur resolue (rgb) -> nom de token DS (--x)
   let selPath = null;   // element exact clique (pour redescendre apres un ↑ parent)
@@ -329,7 +329,7 @@
   const countStyle = h('span', { class: 'bdr-badge', text: '✅ 0  ✨ 0' });
   const countBadge = h('span', { class: 'bdr-badge', text: '0 retour' });
   const allBtn = h('button', { class: 'bdr-btn mini', text: 'Candidats seuls', onclick: toggleAll });
-  const targetBtn = h('button', { class: 'bdr-btn mini', title: 'Granularite du clic', text: 'Cible: block', onclick: toggleTarget });
+  const targetBtn = h('button', { class: 'bdr-btn mini', title: 'Granularite du clic', text: 'Cible: exact', onclick: toggleTarget });
   const pauseBtn = h('button', { class: 'bdr-btn paused', title: 'Lancer / suspendre la revue (Alt+R)', text: '▶ Lancer la revue', onclick: toggle });
   const exportBtn = h('button', { class: 'bdr-btn exp', text: 'Exporter', onclick: exportJSON });
   const hoverLine = h('div', { class: 'bdr-hover', text: 'Survole un element...' });
