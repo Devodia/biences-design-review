@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.15.0
-// (refonte UX/UI : palette premium, header 1 ligne, ecran d'accueil centre, etats live/pause)
+// @version      0.16.0
+// (panneau replie des la creation : plus d'animation de fermeture au chargement de page)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -353,7 +353,7 @@
   const dynBox = h('div', { class: 'bdr-dyn' });
   const topZone = h('div', { id: 'bdr-top' });
 
-  const panel = h('div', { id: 'bdr-panel' },
+  const panel = h('div', { id: 'bdr-panel', class: 'collapsed' },
     h('div', { class: 'bdr-hd' },
       h('div', { class: 'bdr-brand' }, h('span', { class: 'bdr-dot' }), 'Design Review'),
       h('button', { class: 'bdr-icon', title: 'Cacher (rouvre via l onglet a droite)', text: '⟩', onclick: collapse })),
