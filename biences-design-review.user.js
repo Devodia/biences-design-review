@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.13.0
-// (zero config : retrait toggles candidats/tout et cible exact/block ; defauts figes)
+// @version      0.14.0
+// (se charge cache : panneau replie au demarrage, onglet lateral pour ouvrir)
 // @description  Revue visuelle du design system Biences (clic -> panneau droit -> swap/promote/note)
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -357,7 +357,7 @@
     selCard, verbsBox, dynBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
-  const reopen = h('div', { id: 'bdr-reopen', title: 'Rouvrir le panneau', text: '◀ Panneau', onclick: expand });
+  const reopen = h('div', { id: 'bdr-reopen', title: 'Ouvrir Design Review', text: '◀ Design Review', onclick: expand });
 
   /* ---- selection + rendu -------------------------------------------------- */
   function setSel(el) {
@@ -502,7 +502,7 @@
     reviewMode = !reviewMode;
     pauseBtn.textContent = reviewMode ? '⏸ Suspendre' : '▶ Reprendre';
     pauseBtn.className = 'bdr-btn ' + (reviewMode ? 'pause' : 'paused');
-    if (reviewMode) paint(); else { unpaint(); clearHover(); }
+    if (reviewMode) { expand(); paint(); } else { unpaint(); clearHover(); }
   }
 
   /* ---- hover -------------------------------------------------------------- */
@@ -555,7 +555,8 @@
   document.body.appendChild(root);
   buildTokens();
   renderRes(); renderTray(); renderSelected(); if (reviewMode) paint();
+  collapse();   // se charge CACHE : seul l'onglet lateral droit est visible, l'utilisateur ouvre quand il veut
 
   window.__bdr = { toggle: toggle, feedbacks: feedbacks, export: exportJSON };
-  console.log('[BDR] pret (EN PAUSE) —', CAT.validated.size, 'validees,', CAT.proposed.size, 'proposees. Bouton "▶ Lancer la revue" ou Alt+R pour demarrer.');
+  console.log('[BDR] pret (CACHE, EN PAUSE) —', CAT.validated.size, 'validees,', CAT.proposed.size, 'proposees. Onglet "Design Review" a droite pour ouvrir (ou Alt+R pour ouvrir + demarrer).');
 })();
