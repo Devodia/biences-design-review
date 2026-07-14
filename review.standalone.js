@@ -1,16 +1,4 @@
-// ==UserScript==
-// @name         Biences Design Review
-// @namespace    devodia.biences
-// @version      0.17.0
-// @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
-// @match        https://*.dev.odoo.com/*
-// @match        https://*.biences.ch/*
-// @downloadURL  https://raw.githubusercontent.com/Devodia/biences-design-review/main/biences-design-review.user.js
-// @updateURL    https://raw.githubusercontent.com/Devodia/biences-design-review/main/biences-design-review.user.js
-// @grant        none
-// @run-at       document-idle
-// ==/UserScript==
-
+/* Biences Design Review v0.17 — standalone (coller dans la console devtools). */
 
 /* Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor). Ne pas editer a la main. */
 window.BDR_CATALOG = {
