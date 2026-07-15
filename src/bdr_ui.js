@@ -457,6 +457,8 @@
       #bdr-selbox{border:2px solid #22c55e;background:rgba(34,197,94,.07);box-shadow:0 0 0 1px rgba(34,197,94,.3),0 0 16px rgba(34,197,94,.28);}
       #bdr-multilayer{position:fixed;inset:0;pointer-events:none;}
       .bdr-mbox{position:fixed;border:2px solid #a855f7;background:rgba(168,85,247,.10);border-radius:4px;}
+      .bdr-multibanner{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#a855f722;border:1px solid #a855f766;color:#e9d5ff;border-radius:9px;padding:8px 10px;margin-bottom:11px;font-size:11.5px;font-weight:600;}
+      .bdr-multix{cursor:pointer;color:#d8b4fe;font-size:16px;line-height:1;padding:0 4px;} .bdr-multix:hover{color:#fca5a5;}
       #bdr-panel{position:fixed;top:0;right:0;bottom:0;width:360px;z-index:${Z};pointer-events:auto;display:flex;flex-direction:column;background:#0f1620;color:#e6eaf0;font-size:12.5px;line-height:1.45;border-left:1px solid #22303f;box-shadow:-14px 0 44px rgba(0,0,0,.45);transition:transform .22s cubic-bezier(.4,0,.2,1);}
       #bdr-panel.collapsed{transform:translateX(100%);}
       #bdr-reopen{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:${Z};pointer-events:auto;display:none;background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;padding:15px 8px;border-radius:11px 0 0 11px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.02em;writing-mode:vertical-rl;box-shadow:-4px 0 18px rgba(0,0,0,.35);}
@@ -609,7 +611,7 @@
           h('div', { class: 'bdr-stp on', text: '1 · Visiter' }),
           h('div', { class: 'bdr-stp', text: '2 · Reviewer' }),
           h('div', { class: 'bdr-stp', text: '3 · Rapport' })));
-        topZone.appendChild(h('div', { class: 'bdr-hint', html: 'Clique un élément → <b>change son style</b>, <b>crée-en un</b> ou <b>annote</b>. Raccourcis : <span class="bdr-kbd">C</span> changer · <span class="bdr-kbd">S</span> style · <span class="bdr-kbd">N</span> note · <span class="bdr-kbd">↑↓</span> hiérarchie · <span class="bdr-kbd">Échap</span> fermer.' }));
+        topZone.appendChild(h('div', { class: 'bdr-hint', html: 'Clique un élément → <b>change son style</b>, <b>crée-en un</b> ou <b>annote</b>. Raccourcis : <span class="bdr-kbd">C</span> changer · <span class="bdr-kbd">S</span> style · <span class="bdr-kbd">N</span> note · <span class="bdr-kbd">G</span> cibler · <span class="bdr-kbd">↑↓</span> hiérarchie · <span class="bdr-kbd">Échap</span> fermer.' }));
       }
     } else {
       topZone.appendChild(h('div', { class: 'bdr-live-row' },
@@ -644,7 +646,17 @@
       .filter(function (el) { return !(el.closest && el.closest('#bdr-root')); });
     multiGroup = { selector: cls, els: els };
     paintMulti(); renderSelected();
-    toast('Ciblé : ' + els.length + ' éléments');
+    toast('🎯 ' + els.length + ' éléments ciblés');
+  }
+  // cibler le groupe au clavier (G) : marche AVANT que le menu hover ne se ferme
+  function cibleGroupe() {
+    if (!selected) return;
+    var nm = classAttr(selected).trim().split(/\s+/).filter(Boolean).find(function (x) {
+      var r = E.resolve(x);
+      return r.category !== 'unknown' && r.category !== 'buildable' && document.querySelectorAll('.' + CSS.escape(x)).length > 1;
+    });
+    if (nm) { (multiGroup && multiGroup.selector === nm) ? clearMulti() : selectGroup(nm); renderSelected(); }
+    else toast('Pas de classe partagée sur cet élément');
   }
 
   /* ---- carte de l'element selectionne ------------------------------------ */
@@ -659,6 +671,9 @@
       return;
     }
     selCard.className = 'bdr-card';
+    if (multiGroup) selCard.appendChild(h('div', { class: 'bdr-multibanner' },
+      h('span', { text: '🎯 ' + multiGroup.els.length + ' éléments ciblés — le changement s\'applique à tous' }),
+      h('span', { class: 'bdr-multix', text: '×', title: 'Annuler le ciblage', onclick: function () { clearMulti(); renderSelected(); } })));
     var c = classify(selected), d = describe(selected);
     var stLabel = { ds: '✅ Style dans le DS', plain: '— sans style DS —' }[c.state];
     selCard.appendChild(h('div', { class: 'bdr-selhd' },
@@ -1003,7 +1018,9 @@
 
   /* ---- listeners ---------------------------------------------------------- */
   document.addEventListener('mouseover', function (e) {
-    if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) { clearHover(); return; }
+    if (!reviewMode) return;
+    if (multiGroup) paintMulti();   // rafraichit les boites (les caches -> disparaissent proprement)
+    if (e.target.closest && e.target.closest('#bdr-root')) { clearHover(); return; }
     if (e.target === selected) { hovBox.style.display = 'none'; hovered = null; return; }
     setHover(e.target); showHoverInfo(e.target);
   }, true);
@@ -1040,6 +1057,7 @@
     if (k === 'c') { e.preventDefault(); showSwap(); }
     else if (k === 's') { e.preventDefault(); showBuilder(); }
     else if (k === 'n') { e.preventDefault(); showNote(); }
+    else if (k === 'g') { e.preventDefault(); cibleGroupe(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); navUp(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); navDown(); }
   });
@@ -1052,5 +1070,5 @@
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.20 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.21 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
