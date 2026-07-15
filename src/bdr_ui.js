@@ -368,8 +368,8 @@
   }
 
   /* ---- enregistrement d'un retour ---------------------------------------- */
-  function record(el, verdict, extra) {
-    var c = classify(el), d = describe(el);
+  function record(el, verdict, extra, pre) {
+    var c = pre ? pre.c : classify(el), d = pre ? pre.d : describe(el);
     feedbacks.push(Object.assign({
       verdict: verdict, url: location.pathname, ts: new Date().toISOString(),
       breakpoint: breakpoint(), viewport: innerWidth + 'x' + innerHeight,
@@ -459,6 +459,16 @@
       .bdr-mbox{position:fixed;border:2px solid #a855f7;background:rgba(168,85,247,.10);border-radius:4px;}
       .bdr-multibanner{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#a855f722;border:1px solid #a855f766;color:#e9d5ff;border-radius:9px;padding:8px 10px;margin-bottom:11px;font-size:11.5px;font-weight:600;}
       .bdr-multix{cursor:pointer;color:#d8b4fe;font-size:16px;line-height:1;padding:0 4px;} .bdr-multix:hover{color:#fca5a5;}
+      #bdr-onebox{position:fixed;pointer-events:none;display:none;border:2px solid #a855f7;background:rgba(168,85,247,.12);border-radius:4px;box-shadow:0 0 0 2px rgba(168,85,247,.3);}
+      .bdr-msel{max-height:300px;overflow-y:auto;margin-top:8px;border-top:1px solid #22303f;}
+      .bdr-msel-row{display:flex;align-items:center;gap:7px;padding:5px 3px;border-bottom:1px solid #161f2b;font-size:11px;}
+      .bdr-msel-row:hover{background:#1b2634;}
+      .bdr-msel-row.hidden{opacity:.55;}
+      .bdr-msel-row .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex:0 0 auto;}
+      .bdr-msel-row .dot.off{background:#5b6b7d;}
+      .bdr-msel-row .txt{flex:1;min-width:0;color:#e6eaf0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .bdr-msel-row .prov{color:#8896a8;font-family:ui-monospace,monospace;font-size:10px;white-space:nowrap;max-width:42%;overflow:hidden;text-overflow:ellipsis;}
+      .bdr-msel-row .rm{cursor:pointer;color:#6b7b8d;font-size:15px;line-height:1;padding:0 3px;flex:0 0 auto;} .bdr-msel-row .rm:hover{color:#fca5a5;}
       #bdr-panel{position:fixed;top:0;right:0;bottom:0;width:360px;z-index:${Z};pointer-events:auto;display:flex;flex-direction:column;background:#0f1620;color:#e6eaf0;font-size:12.5px;line-height:1.45;border-left:1px solid #22303f;box-shadow:-14px 0 44px rgba(0,0,0,.45);transition:transform .22s cubic-bezier(.4,0,.2,1);}
       #bdr-panel.collapsed{transform:translateX(100%);}
       #bdr-reopen{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:${Z};pointer-events:auto;display:none;background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;padding:15px 8px;border-radius:11px 0 0 11px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.02em;writing-mode:vertical-rl;box-shadow:-4px 0 18px rgba(0,0,0,.35);}
@@ -659,21 +669,68 @@
     else toast('Pas de classe partagée sur cet élément');
   }
 
+  /* ---- vue multi : liste inspectable + editable -------------------------- */
+  var oneBox = h('div', { id: 'bdr-onebox' });
+  function highlightOne(el) { boxAt(oneBox, el); }
+  function clearOne() { oneBox.style.display = 'none'; }
+  // repere de provenance : le plus proche ancetre "discernable" (id, ou classe landmark)
+  function provenance(el) {
+    var n = el.parentElement;
+    while (n && n.nodeType === 1 && n !== document.body && !(n.closest && n.closest('#bdr-root'))) {
+      if (n.id) return n.tagName.toLowerCase() + '#' + n.id;
+      var strong = (n.getAttribute('class') || '').split(/\s+/).find(function (c) {
+        return c && E.resolve(c).category === 'unknown' && /menu|nav|header|footer|section|panel|card|hero|slide|form|dropdown|submenu|sub-menu|content|block|column|aside|widget|banner/.test(c);
+      });
+      if (strong) return n.tagName.toLowerCase() + '.' + strong;
+      n = n.parentElement;
+    }
+    return (el.parentElement || el).tagName.toLowerCase();
+  }
+  function removeFromGroup(el) {
+    var i = multiGroup.els.indexOf(el);
+    if (i >= 0) multiGroup.els.splice(i, 1);
+    clearOne();
+    if (!multiGroup.els.length) { clearMulti(); renderSelected(); return; }
+    paintMulti(); renderSelected();
+  }
+  function renderMultiList() {
+    selCard.className = 'bdr-card';
+    var vis = multiGroup.els.filter(function (el) { return el.offsetParent; }).length;
+    selCard.appendChild(h('div', { class: 'bdr-multibanner' },
+      h('span', { text: '🎯 ' + multiGroup.els.length + ' ciblés · ' + vis + ' visibles' }),
+      h('span', { class: 'bdr-multix', text: '×', title: 'Tout annuler', onclick: function () { clearMulti(); renderSelected(); } })));
+    selCard.appendChild(h('div', { class: 'bdr-hint', text: 'Survole pour localiser sur la page · × pour retirer de la sélection' }));
+    var list = h('div', { class: 'bdr-msel' });
+    multiGroup.els.forEach(function (el) {
+      var visible = !!el.offsetParent;
+      var txt = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30) || ('<' + el.tagName.toLowerCase() + '>');
+      var row = h('div', { class: 'bdr-msel-row' + (visible ? '' : ' hidden'),
+        onmouseenter: function () { if (visible) { try { el.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (e) {} highlightOne(el); } },
+        onmouseleave: clearOne },
+        h('span', { class: 'dot' + (visible ? '' : ' off'), title: visible ? 'visible' : 'caché' }),
+        h('span', { class: 'txt', text: txt }),
+        h('span', { class: 'prov', text: provenance(el) }),
+        h('span', { class: 'rm', text: '×', title: 'Retirer de la sélection', onclick: function (e) { e.stopPropagation(); removeFromGroup(el); } }));
+      list.appendChild(row);
+    });
+    selCard.appendChild(list);
+    verbsBox.appendChild(h('button', { class: 'bdr-v', text: '🔁 Changer le style (groupe)', onclick: showSwap }));
+    verbsBox.appendChild(h('button', { class: 'bdr-v create', text: '➕ Nouveau style (groupe)', onclick: showBuilder }));
+  }
+
   /* ---- carte de l'element selectionne ------------------------------------ */
   function renderSelected() {
     panel.classList.remove('acting');
     verbsBox.innerHTML = ''; selCard.innerHTML = '';
     if (view === 'report') { renderReport(); return; }
     dynBox.innerHTML = '';
+    if (multiGroup) { renderMultiList(); return; }
     if (!selected) {
       selCard.className = '';
       if (reviewMode) selCard.appendChild(h('div', { class: 'bdr-empty' }, h('b', { text: 'Aucun élément sélectionné' }), 'Survole la page puis clique un élément pour l’inspecter.'));
       return;
     }
     selCard.className = 'bdr-card';
-    if (multiGroup) selCard.appendChild(h('div', { class: 'bdr-multibanner' },
-      h('span', { text: '🎯 ' + multiGroup.els.length + ' éléments ciblés — le changement s\'applique à tous' }),
-      h('span', { class: 'bdr-multix', text: '×', title: 'Annuler le ciblage', onclick: function () { clearMulti(); renderSelected(); } })));
     var c = classify(selected), d = describe(selected);
     var stLabel = { ds: '✅ Style dans le DS', plain: '— sans style DS —' }[c.state];
     selCard.appendChild(h('div', { class: 'bdr-selhd' },
@@ -744,10 +801,11 @@
   function commitSwap(cls, verdictExtra) {
     restorePreview();
     var els = targets();
+    var ref = els[0], pre = { d: describe(ref), c: classify(ref) };   // etat AVANT le changement
     els.forEach(function (el) { stage(el, cls); });
-    var extra = Object.assign({ proposition: cls }, verdictExtra || {});
+    var extra = Object.assign({ from: pre.c.ds.map(canonOf), proposition: cls }, verdictExtra || {});
     if (multiGroup) extra.group = { selector: '.' + multiGroup.selector, count: els.length };
-    record(els[0], verdictExtra && verdictExtra.new_style ? 'create' : 'swap', extra);
+    record(ref, verdictExtra && verdictExtra.new_style ? 'create' : 'swap', extra, pre);
     fbEls.set(feedbacks[feedbacks.length - 1], els.slice());
     toast((multiGroup ? els.length + ' éléments → ' : '') + cls + ' — enregistré');
     clearMulti();
@@ -1063,12 +1121,12 @@
   });
 
   /* ---- boot --------------------------------------------------------------- */
-  root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(multiLayer); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
+  root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(oneBox); root.appendChild(multiLayer); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
   buildTokens(); resolveColors(); buildFonts(); loadReport();
   renderRes(); renderTray(); syncState(); renderSelected();
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.21 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.22 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
