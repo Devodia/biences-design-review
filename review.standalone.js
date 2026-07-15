@@ -465,7 +465,6 @@ window.BDR_CATALOG = {
   var E = window.BDR_makeEngine(CAT);
   var Z = 2147483000;
   var STORE = 'bdr_report_v1';     // rapport accumule cross-page
-  var INTENT = 'bdr_intent';       // "revue en cours" -> reprise auto page suivante
 
   /* ---- state -------------------------------------------------------------- */
   var feedbacks = [];
@@ -474,7 +473,9 @@ window.BDR_CATALOG = {
   var selected = null;
   var selPath = null;
   var lastStack = [];
+  var stackScroll = 0;             // position de scroll de la boite hierarchie (preservee au re-render)
   var TOKENS = {};
+  var FONTS = {};                  // police resolue -> { token, famille }
   var colors = { text: '#1c1c1c', muted: '#8a8a8a', accent: '#e87722' };
   var multiGroup = null;
   var showAfter = false;
@@ -500,9 +501,10 @@ window.BDR_CATALOG = {
     } catch (e) {}
   }
   function clearReport() {
-    feedbacks = []; createdStyles = {};
+    applyBA(false);
+    touchedEls = []; beforeOf = new Map(); afterOf = new Map(); showAfter = false;
+    feedbacks.length = 0; createdStyles = {};
     try { localStorage.removeItem(STORE); } catch (e) {}
-    if (window.__bdr) window.__bdr.feedbacks = feedbacks;
     renderTray();
   }
 
@@ -653,6 +655,15 @@ window.BDR_CATALOG = {
       || viaClass(['body-14-12-muted', 'light-subtitle-style', 'small-text-style']) || '#8a8a8a';
     probe.remove();
   }
+  // police reelle -> token DS + famille (la police EST une variable : --font-text = lato = body)
+  function buildFonts() {
+    CAT.families.forEach(function (f) {
+      var raw = getComputedStyle(document.documentElement).getPropertyValue(f.font).trim();
+      if (!raw) return;
+      var first = raw.split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+      if (first && !(first in FONTS)) FONTS[first] = { token: f.font, label: f.key };
+    });
+  }
   function buildTokens() {
     var probe = h('span', { style: 'position:absolute;opacity:0;pointer-events:none' });
     document.body.appendChild(probe);
@@ -696,7 +707,12 @@ window.BDR_CATALOG = {
     }
     var tc = cs.color.trim();
     if (tc && tc !== 'rgba(0, 0, 0, 0)') rows.push(['texte', tc, TOKENS[tc] || null]);
-    plain('police', cs.fontFamily);
+    var ff = (cs.fontFamily || '').trim();
+    if (ff && ff !== 'normal') {
+      var first = ff.split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+      var fm = FONTS[first];
+      rows.push(['police', ff.length > 26 ? ff.slice(0, 26) + '…' : ff, fm ? fm.token : null, fm ? fm.label : null]);
+    }
     plain('taille', cs.fontSize);
     plain('graisse', cs.fontWeight);
     var box = h('div', { class: 'bdr-props' });
@@ -705,6 +721,7 @@ window.BDR_CATALOG = {
     rows.forEach(function (r) {
       var row = h('div', { class: 'bdr-prop' }, h('span', { class: 'k', text: r[0] }), h('span', { class: 'v', text: r[1] }));
       if (r[2]) row.appendChild(h('span', { class: 'tok', text: r[2] }));
+      if (r[3]) row.appendChild(h('span', { class: 'fam', text: r[3] }));
       box.appendChild(row);
     });
     return box;
@@ -729,17 +746,66 @@ window.BDR_CATALOG = {
     return null;
   }
 
-  /* ---- registre avant/apres ---------------------------------------------- */
-  function stage(el, afterClass) {
-    if (!beforeOf.has(el)) { beforeOf.set(el, classAttr(el)); touchedEls.push(el); }
-    afterOf.set(el, afterClass);
-    el.setAttribute('class', afterClass);
+  /* ---- application forcee d'un style (s'impose meme si la page l'ecrase) -- */
+  var forcedCache = {};
+  function keptClasses(el) { return classAttr(el).split(/\s+/).filter(function (c) { return c && E.resolve(c).category === 'unknown'; }); }
+  function snap(el) { return { cls: classAttr(el), sty: el.getAttribute('style') || '' }; }
+  function restoreSnap(el, s) {
+    if (s.cls) el.setAttribute('class', s.cls); else el.removeAttribute('class');
+    if (s.sty) el.setAttribute('style', s.sty); else el.removeAttribute('style');
+  }
+  // proprietes CSS declarees par le selecteur .cls (y compris dans @media / @supports)
+  function declaredPropsOf(cls) {
+    var set = {};
+    function scan(rules) {
+      for (var i = 0; i < rules.length; i++) {
+        var r = rules[i];
+        if (r.selectorText && r.selectorText.split(',').some(function (s) { return s.trim() === '.' + cls; })) {
+          for (var j = 0; j < r.style.length; j++) set[r.style[j]] = true;
+        } else if (r.cssRules) { scan(r.cssRules); }
+      }
+    }
+    for (var s = 0; s < document.styleSheets.length; s++) {
+      var rr; try { rr = document.styleSheets[s].cssRules; } catch (e) { continue; }
+      scan(rr);
+    }
+    return Object.keys(set);
+  }
+  // valeurs propres de la classe (rendu neutre), pour la forcer en inline
+  function forcedFor(cls) {
+    if (cls in forcedCache) return forcedCache[cls];
+    var props = declaredPropsOf(cls), out = null;
+    // classe canonique absente de la page (ex : nouvelle nomenclature sur la prod) -> on l'injecte
+    if (!props.length) { var pn = E.parseName(cls); if (pn) { injectStyle(cls, pn); props = declaredPropsOf(cls); } }
+    if (props.length) {
+      var probe = h('span', { class: cls, style: 'position:absolute;left:-9999px;top:-9999px;pointer-events:none;' });
+      document.body.appendChild(probe);
+      var cs = getComputedStyle(probe); out = {};
+      props.forEach(function (p) { var v = cs.getPropertyValue(p); if (v) out[p] = v; });
+      probe.remove();
+    }
+    forcedCache[cls] = out; return out;
+  }
+  // applique cls (garde les classes non-DS) + FORCE ses proprietes en inline !important
+  function applyStyleTo(el, cls, origStyle) {
+    var k = keptClasses(el);
+    if (origStyle != null) { if (origStyle) el.setAttribute('style', origStyle); else el.removeAttribute('style'); }
+    k.push(cls); el.setAttribute('class', k.join(' '));
+    var f = forcedFor(cls);
+    if (f) for (var p in f) el.style.setProperty(p, f[p], 'important');
+  }
+
+  /* ---- registre avant/apres (snapshot classe + inline) ------------------- */
+  function stage(el, cls) {
+    if (!beforeOf.has(el)) { beforeOf.set(el, snap(el)); touchedEls.push(el); }
+    applyStyleTo(el, cls, beforeOf.get(el).sty);
+    afterOf.set(el, snap(el));
     showAfter = true;
   }
   function applyBA(after) {
     showAfter = after;
     touchedEls.forEach(function (el) {
-      el.setAttribute('class', after ? afterOf.get(el) : beforeOf.get(el));
+      restoreSnap(el, (after ? afterOf : beforeOf).get(el));
       if (el === selected) { markSelected(el); boxAt(selBox, el); }
     });
     paintMulti();
@@ -897,6 +963,7 @@ window.BDR_CATALOG = {
       .bdr-prop{display:flex;gap:8px;align-items:baseline;font-size:11px;padding:2px 0;flex-wrap:wrap;}
       .bdr-prop .k{color:#6b7b8d;min-width:48px;} .bdr-prop .v{color:#e6eaf0;font-family:ui-monospace,monospace;word-break:break-all;}
       .bdr-prop .tok{color:#2dd4bf;font-family:ui-monospace,monospace;background:#2dd4bf1f;padding:1px 6px;border-radius:5px;}
+      .bdr-prop .fam{color:#c4b5fd;font-family:ui-monospace,monospace;background:#a855f71f;padding:1px 6px;border-radius:5px;}
       .bdr-warn{margin-top:10px;font-size:11px;color:#fcd34d;background:#78350f4d;border:1px solid #9a3412;border-radius:8px;padding:8px 10px;line-height:1.45;}
       .bdr-stack{margin-top:11px;border-top:1px solid #22303f;padding-top:8px;}
       .bdr-stack-scroll{max-height:196px;overflow-y:auto;margin:0 -4px;padding:0 4px;}
@@ -929,6 +996,7 @@ window.BDR_CATALOG = {
       .bdr-mods{display:flex;flex-wrap:wrap;gap:6px;}
       .bdr-mod{cursor:pointer;border:1px solid #2a3a4c;background:#182230;color:#c3ccd8;border-radius:20px;padding:5px 12px;font-size:11.5px;}
       .bdr-mod.on{border-color:#a855f7;background:#a855f722;color:#e9d5ff;}
+      .bdr-mod.exists:not(.on){border-color:#22c55e66;color:#86efac;background:#22c55e12;}
       .bdr-preview{margin:12px 0;padding:11px 12px;border:1px dashed #2a3a4c;border-radius:10px;background:#0b1119;}
       .bdr-name{font-family:ui-monospace,monospace;font-size:13px;color:#86efac;word-break:break-all;}
       .bdr-status{margin-top:7px;font-size:11px;line-height:1.5;}
@@ -991,7 +1059,7 @@ window.BDR_CATALOG = {
     if (!reviewMode) {
       if (pageLocked) {
         topZone.appendChild(h('button', { class: 'bdr-cta', text: '▶  Reprendre la revue', onclick: function () { pageLocked = false; toggle(); } }));
-        topZone.appendChild(h('div', { class: 'bdr-hint', html: 'Page <b>verrouillée</b> — pause de revue. Les liens sont réactivés : <b>va sur une autre page</b>, elle reprendra la revue toute seule. Ou reprends ici.' }));
+        topZone.appendChild(h('div', { class: 'bdr-hint', html: 'Page <b>verrouillée</b> — pause de revue. Les liens sont réactivés : <b>navigue vers une autre page</b>, puis relance la revue là-bas.' }));
       } else {
         topZone.appendChild(h('button', { class: 'bdr-cta', text: '▶  Démarrer la revue', onclick: toggle }));
         topZone.appendChild(h('div', { class: 'bdr-steps' },
@@ -1012,7 +1080,7 @@ window.BDR_CATALOG = {
 
   /* ---- selection --------------------------------------------------------- */
   function setSel(el) { clearDyn(); selected = el; markSelected(el); boxAt(selBox, el); if (view === 'report') view = 'review'; renderSelected(); }
-  function select(el) { selPath = el; clearMulti(); setSel(el); expand(); }
+  function select(el) { stackScroll = 0; selPath = el; clearMulti(); setSel(el); expand(); }
   function deselect() { clearDyn(); unmarkSelected(); selected = null; selPath = null; selBox.style.display = 'none'; clearMulti(); renderSelected(); }
   function navUp() {
     if (!selected) return;
@@ -1049,12 +1117,10 @@ window.BDR_CATALOG = {
     }
     selCard.className = 'bdr-card';
     var c = classify(selected), d = describe(selected);
-    var stLabel = { ds: '✅ style DS', override: '⛔ style inline', plain: '— sans style DS —' }[c.state];
+    var stLabel = { ds: '✅ Style dans le DS', override: '⛔ style inline', plain: '— sans style DS —' }[c.state];
     selCard.appendChild(h('div', { class: 'bdr-selhd' },
       h('span', { class: 'bdr-state ' + c.state, text: stLabel }),
       h('span', { class: 'bdr-nav' },
-        h('span', { class: 'bdr-navbtn', title: 'Parent (↑)', text: '↑', onclick: navUp }),
-        h('span', { class: 'bdr-navbtn', title: 'Enfant (↓)', text: '↓', onclick: navDown }),
         h('span', { class: 'bdr-x', text: '×', title: 'Désélectionner (Échap)', onclick: deselect }))));
 
     // chips : nom canonique resolu pour chaque classe DS
@@ -1069,17 +1135,17 @@ window.BDR_CATALOG = {
     selCard.appendChild(h('div', { class: 'bdr-anchor', text: '<' + d.tag + '>  ' + d.text_anchor }));
     if (d.resource) selCard.appendChild(h('div', { class: 'bdr-res' }, h('span', { text: '🖼' }), h('span', { class: 'p', text: d.resource })));
     selCard.appendChild(propsBlock(selected));
-    if (dsClassInert(selected)) selCard.appendChild(h('div', { class: 'bdr-warn', text: '⚠ Ici, changer le style ne modifiera pas l’affichage : une mise en forme propre à cette page prend le dessus.' }));
 
     // hierarchie sous le curseur (scrollbox complete jusqu'a <html>)
     if (lastStack.length > 1) {
-      var scroll = h('div', { class: 'bdr-stack-scroll' });
+      var scroll = h('div', { class: 'bdr-stack-scroll', onscroll: function () { stackScroll = scroll.scrollTop; } });
       lastStack.forEach(function (el) {
         var cls = classAttr(el).trim().split(/\s+/).filter(Boolean).slice(0, 3).join('.');
         var label = '<' + el.tagName.toLowerCase() + '>' + (cls ? ' .' + cls : '');
         scroll.appendChild(h('div', { class: 'bdr-stack-row' + (el === selected ? ' on' : ''), text: label, title: label, onclick: function () { clearMulti(); setSel(el); } }));
       });
       selCard.appendChild(h('div', { class: 'bdr-stack' }, h('div', { class: 'bdr-stack-t', text: 'Hiérarchie (clique pour remonter)' }), scroll));
+      scroll.scrollTop = stackScroll;
     }
 
     // multi-selection : un bouton par classe DS partagee (>1 element)
@@ -1105,24 +1171,26 @@ window.BDR_CATALOG = {
   /* ---- cibles + preview -------------------------------------------------- */
   function targets() { return multiGroup ? multiGroup.els : (selected ? [selected] : []); }
   function clearDyn() { restorePreview(); if (dynCleanup) { try { dynCleanup(); } catch (e) {} dynCleanup = null; } }
-  function keptClasses(el) { return classAttr(el).split(/\s+/).filter(function (c) { return c && E.resolve(c).category === 'unknown'; }); }
 
-  var previewSaved = null;
-  function applyClass(cls) {
-    targets().forEach(function (el) { var k = keptClasses(el); k.push(cls); el.setAttribute('class', k.join(' ')); });
+  var previewSaved = null;   // Map<el, snap>
+  function applyToTargets(cls, saved) {
+    targets().forEach(function (el) {
+      var orig = saved && saved.get(el) ? saved.get(el).sty : null;
+      applyStyleTo(el, cls, orig);
+    });
     if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti();
   }
   function swapPreview(cls) {
-    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, classAttr(el)); }); }
-    applyClass(cls);
+    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, snap(el)); }); }
+    applyToTargets(cls, previewSaved);
   }
   function restorePreview() {
-    if (previewSaved) { previewSaved.forEach(function (v, el) { el.setAttribute('class', v); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
+    if (previewSaved) { previewSaved.forEach(function (s, el) { restoreSnap(el, s); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
   }
   function commitSwap(cls, verdictExtra) {
     restorePreview();
     var els = targets();
-    els.forEach(function (el) { var k = keptClasses(el); k.push(cls); stage(el, k.join(' ')); });
+    els.forEach(function (el) { stage(el, cls); });
     var extra = Object.assign({ proposition: cls }, verdictExtra || {});
     if (multiGroup) extra.group = { selector: '.' + multiGroup.selector, count: els.length };
     record(els[0], verdictExtra && verdictExtra.new_style ? 'create' : 'swap', extra);
@@ -1199,12 +1267,25 @@ window.BDR_CATALOG = {
         minChips.appendChild(h('span', { class: 'bdr-sc exists', text: mn, title: 'déjà utilisée', onclick: function () { minIn.value = mn; st.min = mn; update(); } }));
       });
     }
+    // modificateurs deja utilises dans un style existant de cette famille+taille
+    function refreshMods() {
+      var union = {};
+      if (st.family && st.max) {
+        var min = (st.min == null || st.min === '') ? st.max : st.min;
+        E.modSetsFor(st.family, st.max, min).forEach(function (s) { s.forEach(function (m) { union[m] = true; }); });
+      }
+      Array.prototype.forEach.call(modsBox.children, function (b) {
+        var mk = b.getAttribute('data-mod');
+        b.classList.toggle('exists', !!union[mk]);
+        b.title = union[mk] ? 'déjà utilisé dans cette combinaison' : '';
+      });
+    }
     maxIn.addEventListener('input', function () { st.max = maxIn.value ? +maxIn.value : null; refreshMins(); update(); });
     minIn.addEventListener('input', function () { st.min = minIn.value ? +minIn.value : null; update(); });
 
     CAT.mods.forEach(function (m) {
       var on = st.mods.indexOf(m.key) !== -1;
-      var b = h('div', { class: 'bdr-mod' + (on ? ' on' : ''), text: (on ? '✓ ' : '+ ') + m.label, title: m.key, onclick: function () {
+      var b = h('div', { class: 'bdr-mod' + (on ? ' on' : ''), text: (on ? '✓ ' : '+ ') + m.label, 'data-mod': m.key, onclick: function () {
         var i = st.mods.indexOf(m.key);
         if (i === -1) { st.mods.push(m.key); b.classList.add('on'); b.textContent = '✓ ' + m.label; }
         else { st.mods.splice(i, 1); b.classList.remove('on'); b.textContent = '+ ' + m.label; }
@@ -1221,11 +1302,12 @@ window.BDR_CATALOG = {
     var bldPreviewSaved = null;
     function previewCreated(name, parsed) {
       if (parsed) injectStyle(name, parsed);
-      if (!bldPreviewSaved) { bldPreviewSaved = new Map(); targets().forEach(function (el) { bldPreviewSaved.set(el, classAttr(el)); }); }
-      applyClass(name);
+      if (!bldPreviewSaved) { bldPreviewSaved = new Map(); targets().forEach(function (el) { bldPreviewSaved.set(el, snap(el)); }); }
+      applyToTargets(name, bldPreviewSaved);
     }
-    function restoreBld() { if (bldPreviewSaved) { bldPreviewSaved.forEach(function (v, el) { el.setAttribute('class', v); }); bldPreviewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } } }
+    function restoreBld() { if (bldPreviewSaved) { bldPreviewSaved.forEach(function (s, el) { restoreSnap(el, s); }); bldPreviewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } } }
     function update() {
+      refreshMods();
       var name = currentName();
       if (!name) { nameEl.textContent = '—'; statusEl.textContent = ''; statusEl.className = 'bdr-status'; actionEl.innerHTML = ''; return; }
       nameEl.textContent = name;
@@ -1356,8 +1438,8 @@ window.BDR_CATALOG = {
 
   function toggle() {
     reviewMode = !reviewMode;
-    if (reviewMode) { try { localStorage.setItem(INTENT, '1'); } catch (e) {} pageLocked = false; expand(); paint(); }
-    else { try { localStorage.removeItem(INTENT); } catch (e) {} unpaint(); clearHover(); }
+    if (reviewMode) { pageLocked = false; expand(); paint(); }
+    else { unpaint(); clearHover(); }
     syncState(); renderSelected();
   }
 
@@ -1402,7 +1484,7 @@ window.BDR_CATALOG = {
     if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
-  addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
+  addEventListener('resize', function () { forcedCache = {}; renderRes(); if (reviewMode) paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
   addEventListener('scroll', function () { if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); paintMulti(); }, true);
   addEventListener('keydown', function (e) {
     if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); return; }
@@ -1425,12 +1507,10 @@ window.BDR_CATALOG = {
   /* ---- boot --------------------------------------------------------------- */
   root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(multiLayer); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
-  buildTokens(); resolveColors(); loadReport();
-  var resume = false; try { resume = localStorage.getItem(INTENT) === '1'; } catch (e) {}
-  if (resume) reviewMode = true;
-  renderRes(); renderTray(); syncState(); renderSelected(); if (reviewMode) paint();
+  buildTokens(); resolveColors(); buildFonts(); loadReport();
+  renderRes(); renderTray(); syncState(); renderSelected();
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.18 prêt — ' + (reviewMode ? 'revue reprise' : 'en pause') + ', ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.19 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
