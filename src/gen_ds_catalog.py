@@ -36,8 +36,8 @@ FAMILIES = [
 # kind = comment le synthetiser en CSS a runtime cote JS
 MODS = [
     {"key": "caps",   "label": "Capitales",           "kind": "caps"},
-    {"key": "muted",  "label": "Attenue",             "kind": "muted"},
-    {"key": "ondark", "label": "Sur fond fonce",      "kind": "ondark"},
+    {"key": "muted",  "label": "Atténué",             "kind": "muted"},
+    {"key": "ondark", "label": "Sur fond foncé",      "kind": "ondark"},
     {"key": "wide",   "label": "Interlettrage large", "kind": "wide"},
     {"key": "accent", "label": "Couleur accent",      "kind": "accent"},
 ]

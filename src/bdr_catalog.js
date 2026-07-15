@@ -42,12 +42,12 @@ window.BDR_CATALOG = {
     },
     {
       "key": "muted",
-      "label": "Attenue",
+      "label": "Atténué",
       "kind": "muted"
     },
     {
       "key": "ondark",
-      "label": "Sur fond fonce",
+      "label": "Sur fond foncé",
       "kind": "ondark"
     },
     {
