@@ -28,7 +28,7 @@ def read(name):
 HEADER = """// ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.22.0
+// @version      __VER__
 // @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -46,10 +46,11 @@ if cut != -1:
     engine = engine[:cut].rstrip() + "\n"
 ui = read("bdr_ui.js").strip()
 
+VERSION = "0.23.0"    # source unique de la version (injectee dans l'entete + le code)
 SEP = "\n\n"
-userscript = HEADER + SEP + catalog + SEP + engine + SEP + ui + "\n"
-standalone = ("/* Biences Design Review v0.17 — standalone (coller dans la console devtools). */"
-              + SEP + catalog + SEP + engine + SEP + ui + "\n")
+userscript = (HEADER + SEP + catalog + SEP + engine + SEP + ui + "\n").replace("__VER__", VERSION).replace("__BDR_VERSION__", VERSION)
+standalone = ("/* Biences Design Review v" + VERSION + " — standalone (coller dans la console devtools). */"
+              + SEP + catalog + SEP + engine + SEP + ui + "\n").replace("__BDR_VERSION__", VERSION)
 
 with open(os.path.join(REPO, "biences-design-review.user.js"), "w", encoding="utf-8") as f:
     f.write(userscript)

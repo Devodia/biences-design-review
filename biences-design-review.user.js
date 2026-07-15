@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.22.0
+// @version      0.23.0
 // @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -1499,7 +1499,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.18.0',
+      tool: 'biences-design-review', version: '0.23.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1590,5 +1590,5 @@ window.BDR_CATALOG = {
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.22 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.23.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();

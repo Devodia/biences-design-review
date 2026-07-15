@@ -1037,7 +1037,7 @@
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.18.0',
+      tool: 'biences-design-review', version: '__BDR_VERSION__',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1128,5 +1128,5 @@
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.22 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v__BDR_VERSION__ prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
