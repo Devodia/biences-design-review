@@ -41,6 +41,7 @@
   var touchedEls = [];
   var beforeOf = new Map();
   var afterOf = new Map();
+  var fbEls = new Map();           // feedback -> [els], pour defaire au retrait
 
   /* ---- persistance -------------------------------------------------------- */
   function saveReport() {
@@ -54,10 +55,18 @@
   }
   function clearReport() {
     applyBA(false);
-    touchedEls = []; beforeOf = new Map(); afterOf = new Map(); showAfter = false;
+    touchedEls = []; beforeOf = new Map(); afterOf = new Map(); fbEls = new Map(); showAfter = false;
     feedbacks.length = 0; createdStyles = {};
     try { localStorage.removeItem(STORE); } catch (e) {}
     renderTray();
+  }
+  // retirer une modif : defait le changement sur ses elements + oublie son avant/apres
+  function removeFeedback(i) {
+    var fb = feedbacks[i], els = fbEls.get(fb);
+    if (els) { els.forEach(function (el) {
+      if (beforeOf.has(el)) { el.setAttribute('class', beforeOf.get(el)); el.removeAttribute('data-bdr-v'); var t = touchedEls.indexOf(el); if (t >= 0) touchedEls.splice(t, 1); beforeOf.delete(el); afterOf.delete(el); }
+    }); fbEls.delete(fb); }
+    feedbacks.splice(i, 1); saveReport(); renderTray();
   }
 
   /* ---- helpers DOM -------------------------------------------------------- */
@@ -117,11 +126,7 @@
   // Plus de notion "a migrer" : tout style resolu = ds. (Alias resolu au canonique.)
   function classify(el) {
     var ds = dsClassesOf(el);
-    var override = el.getAttribute && el.getAttribute('style') ? ['inline-style'] : [];
-    var state = 'plain';
-    if (ds.length) state = 'ds';
-    else if (override.length) state = 'override';
-    return { state: state, ds: ds, override: override };
+    return { state: ds.length ? 'ds' : 'plain', ds: ds };
   }
   // nom affiche pour une classe DS = son canonique (monde "nouvelle nomenclature")
   function canonOf(r) { return r.canonical || r.name; }
@@ -298,66 +303,52 @@
     return null;
   }
 
-  /* ---- application forcee d'un style (s'impose meme si la page l'ecrase) -- */
-  var forcedCache = {};
+  /* ---- application d'un style : on CHANGE la classe (+ injecte sa regle si absente) -- */
+  var ruleEnsured = {};
   function keptClasses(el) { return classAttr(el).split(/\s+/).filter(function (c) { return c && E.resolve(c).category === 'unknown'; }); }
-  function snap(el) { return { cls: classAttr(el), sty: el.getAttribute('style') || '' }; }
-  function restoreSnap(el, s) {
-    if (s.cls) el.setAttribute('class', s.cls); else el.removeAttribute('class');
-    if (s.sty) el.setAttribute('style', s.sty); else el.removeAttribute('style');
-  }
-  // proprietes CSS declarees par le selecteur .cls (y compris dans @media / @supports)
-  function declaredPropsOf(cls) {
-    var set = {};
+  // le selecteur .cls a-t-il au moins une regle dans la page ?
+  function ruleExists(cls) {
     function scan(rules) {
       for (var i = 0; i < rules.length; i++) {
         var r = rules[i];
-        if (r.selectorText && r.selectorText.split(',').some(function (s) { return s.trim() === '.' + cls; })) {
-          for (var j = 0; j < r.style.length; j++) set[r.style[j]] = true;
-        } else if (r.cssRules) { scan(r.cssRules); }
+        if (r.selectorText && r.selectorText.split(',').some(function (s) { return s.trim() === '.' + cls; })) return true;
+        if (r.cssRules && scan(r.cssRules)) return true;
       }
+      return false;
     }
     for (var s = 0; s < document.styleSheets.length; s++) {
       var rr; try { rr = document.styleSheets[s].cssRules; } catch (e) { continue; }
-      scan(rr);
+      if (scan(rr)) return true;
     }
-    return Object.keys(set);
+    return false;
   }
-  // valeurs propres de la classe (rendu neutre), pour la forcer en inline
-  function forcedFor(cls) {
-    if (cls in forcedCache) return forcedCache[cls];
-    var props = declaredPropsOf(cls), out = null;
-    // classe canonique absente de la page (ex : nouvelle nomenclature sur la prod) -> on l'injecte
-    if (!props.length) { var pn = E.parseName(cls); if (pn) { injectStyle(cls, pn); props = declaredPropsOf(cls); } }
-    if (props.length) {
-      var probe = h('span', { class: cls, style: 'position:absolute;left:-9999px;top:-9999px;pointer-events:none;' });
-      document.body.appendChild(probe);
-      var cs = getComputedStyle(probe); out = {};
-      props.forEach(function (p) { var v = cs.getPropertyValue(p); if (v) out[p] = v; });
-      probe.remove();
-    }
-    forcedCache[cls] = out; return out;
+  // si la classe est absente de la page (prod), on injecte sa regle synthetisee
+  // (avec ses @media -> responsive, en !important pour battre une regle locale de la page)
+  function ensureRule(cls) {
+    if (ruleEnsured[cls]) return;
+    ruleEnsured[cls] = true;
+    if (ruleExists(cls)) return;              // deja dans la page (staging refactore)
+    var pn = E.parseName(cls);
+    if (pn) injectStyle(cls, pn);
   }
-  // applique cls (garde les classes non-DS) + FORCE ses proprietes en inline !important
-  function applyStyleTo(el, cls, origStyle) {
-    var k = keptClasses(el);
-    if (origStyle != null) { if (origStyle) el.setAttribute('style', origStyle); else el.removeAttribute('style'); }
-    k.push(cls); el.setAttribute('class', k.join(' '));
-    var f = forcedFor(cls);
-    if (f) for (var p in f) el.style.setProperty(p, f[p], 'important');
+  // applique cls en gardant les classes non-DS (simple changement de classe)
+  function applyStyleTo(el, cls) {
+    ensureRule(cls);
+    var k = keptClasses(el); k.push(cls);
+    el.setAttribute('class', k.join(' '));
   }
 
-  /* ---- registre avant/apres (snapshot classe + inline) ------------------- */
+  /* ---- registre avant/apres (classe uniquement) -------------------------- */
   function stage(el, cls) {
-    if (!beforeOf.has(el)) { beforeOf.set(el, snap(el)); touchedEls.push(el); }
-    applyStyleTo(el, cls, beforeOf.get(el).sty);
-    afterOf.set(el, snap(el));
+    if (!beforeOf.has(el)) { beforeOf.set(el, classAttr(el)); touchedEls.push(el); }
+    applyStyleTo(el, cls);
+    afterOf.set(el, classAttr(el));
     showAfter = true;
   }
   function applyBA(after) {
     showAfter = after;
     touchedEls.forEach(function (el) {
-      restoreSnap(el, (after ? afterOf : beforeOf).get(el));
+      el.setAttribute('class', after ? afterOf.get(el) : beforeOf.get(el));
       if (el === selected) { markSelected(el); boxAt(selBox, el); }
     });
     paintMulti();
@@ -370,7 +361,7 @@
   }
   function injectStyle(name, parsed) {
     if (injectedCSS[name]) return injectedCSS[name];
-    var css = E.synthCSS(name, parsed, colors);
+    var css = E.synthCSS(name, parsed, colors, true);   // !important pour la previz (bat les regles locales)
     injectedCSS[name] = css;
     ensureSheet().appendChild(document.createTextNode(css));
     return css;
@@ -384,7 +375,7 @@
       breakpoint: breakpoint(), viewport: innerWidth + 'x' + innerHeight,
       tag: d.tag, id: d.id, open_tag: d.open_tag, text_anchor: d.text_anchor,
       css_path: d.css_path, rect: d.rect, resource: d.resource,
-      classes: { ds: c.ds.map(canonOf), dom: d.classes_all, override: c.override }
+      classes: { ds: c.ds.map(canonOf), dom: d.classes_all }
     }, extra || {}));
     el.setAttribute('data-bdr-v', verdict);
     saveReport(); renderTray(); renderSelected();
@@ -669,7 +660,7 @@
     }
     selCard.className = 'bdr-card';
     var c = classify(selected), d = describe(selected);
-    var stLabel = { ds: '✅ Style dans le DS', override: '⛔ style inline', plain: '— sans style DS —' }[c.state];
+    var stLabel = { ds: '✅ Style dans le DS', plain: '— sans style DS —' }[c.state];
     selCard.appendChild(h('div', { class: 'bdr-selhd' },
       h('span', { class: 'bdr-state ' + c.state, text: stLabel }),
       h('span', { class: 'bdr-nav' },
@@ -681,7 +672,6 @@
       var col = r.category === 'component' ? '#38bdf8' : r.category === 'util' ? '#2dd4bf' : r.category === 'role' ? '#a3e635' : '#16a34a';
       chips.appendChild(chip(canonOf(r), col));
     });
-    if (c.override.length) chips.appendChild(chip('inline-style', '#dc2626'));
     if (c.state === 'plain') chips.appendChild(chip('— sans style —', '#94a3b8'));
     selCard.appendChild(chips);
     selCard.appendChild(h('div', { class: 'bdr-anchor', text: '<' + d.tag + '>  ' + d.text_anchor }));
@@ -725,19 +715,16 @@
   function clearDyn() { restorePreview(); if (dynCleanup) { try { dynCleanup(); } catch (e) {} dynCleanup = null; } }
 
   var previewSaved = null;   // Map<el, snap>
-  function applyToTargets(cls, saved) {
-    targets().forEach(function (el) {
-      var orig = saved && saved.get(el) ? saved.get(el).sty : null;
-      applyStyleTo(el, cls, orig);
-    });
+  function applyToTargets(cls) {
+    targets().forEach(function (el) { applyStyleTo(el, cls); });
     if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti();
   }
   function swapPreview(cls) {
-    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, snap(el)); }); }
-    applyToTargets(cls, previewSaved);
+    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, classAttr(el)); }); }
+    applyToTargets(cls);
   }
   function restorePreview() {
-    if (previewSaved) { previewSaved.forEach(function (s, el) { restoreSnap(el, s); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
+    if (previewSaved) { previewSaved.forEach(function (v, el) { el.setAttribute('class', v); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
   }
   function commitSwap(cls, verdictExtra) {
     restorePreview();
@@ -746,6 +733,7 @@
     var extra = Object.assign({ proposition: cls }, verdictExtra || {});
     if (multiGroup) extra.group = { selector: '.' + multiGroup.selector, count: els.length };
     record(els[0], verdictExtra && verdictExtra.new_style ? 'create' : 'swap', extra);
+    fbEls.set(feedbacks[feedbacks.length - 1], els.slice());
     toast((multiGroup ? els.length + ' éléments → ' : '') + cls + ' — enregistré');
     clearMulti();
   }
@@ -854,10 +842,10 @@
     var bldPreviewSaved = null;
     function previewCreated(name, parsed) {
       if (parsed) injectStyle(name, parsed);
-      if (!bldPreviewSaved) { bldPreviewSaved = new Map(); targets().forEach(function (el) { bldPreviewSaved.set(el, snap(el)); }); }
-      applyToTargets(name, bldPreviewSaved);
+      if (!bldPreviewSaved) { bldPreviewSaved = new Map(); targets().forEach(function (el) { bldPreviewSaved.set(el, classAttr(el)); }); }
+      applyToTargets(name);
     }
-    function restoreBld() { if (bldPreviewSaved) { bldPreviewSaved.forEach(function (s, el) { restoreSnap(el, s); }); bldPreviewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } } }
+    function restoreBld() { if (bldPreviewSaved) { bldPreviewSaved.forEach(function (v, el) { el.setAttribute('class', v); }); bldPreviewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } } }
     function update() {
       refreshMods();
       var name = currentName();
@@ -880,7 +868,7 @@
         actionEl.appendChild(role);
         actionEl.appendChild(h('button', { class: 'bdr-cta', text: 'Créer et appliquer', onclick: function () {
           restoreBld(); dynCleanup = null;
-          var css = injectStyle(name, parsed); createdStyles[name] = css;
+          injectStyle(name, parsed); var css = E.synthCSS(name, parsed, colors, false); createdStyles[name] = css;
           commitSwap(name, { new_style: { name: name, family: parsed.family, max: parsed.max, min: parsed.min, mods: parsed.mods, role: role.value.trim() || null, css: css } });
           dynBox.innerHTML = '';
         } }));
@@ -949,7 +937,7 @@
           h('div', { class: 'anc', text: '<' + fb.tag + '> ' + (fb.text_anchor || fb.css_path || '').slice(0, 44) }));
         rep.appendChild(h('div', { class: 'bdr-rep-row' },
           h('span', { class: 'bdr-rep-v', text: icon }), main,
-          h('span', { class: 'bdr-rep-del', text: '×', title: 'Retirer', onclick: function () { feedbacks.splice(i, 1); saveReport(); renderTray(); renderReport(); } })));
+          h('span', { class: 'bdr-rep-del', text: '×', title: 'Retirer', onclick: function () { removeFeedback(i); renderReport(); } })));
       });
     }
 
@@ -1005,7 +993,7 @@
     var txt = '&lt;' + el.tagName.toLowerCase() + '&gt; ';
     if (names.length) txt += names.join(', ');
     else {
-      var base = c.override.length ? 'inline-style' : '— sans style —';
+      var base = '— sans style —';
       var anc = nearestStyled(el);
       if (anc) txt += base + ' <span class="up">↑ ' + anc.tagName.toLowerCase() + ' ' + classify(anc).ds.map(canonOf).join(',') + '</span>';
       else txt += base;
@@ -1036,7 +1024,7 @@
     if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
-  addEventListener('resize', function () { forcedCache = {}; renderRes(); if (reviewMode) paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
+  addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
   addEventListener('scroll', function () { if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); paintMulti(); }, true);
   addEventListener('keydown', function (e) {
     if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); return; }
@@ -1064,5 +1052,5 @@
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.19 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.20 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();

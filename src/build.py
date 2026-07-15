@@ -28,7 +28,7 @@ def read(name):
 HEADER = """// ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.19.0
+// @version      0.20.0
 // @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*

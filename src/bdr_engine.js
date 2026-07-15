@@ -86,6 +86,7 @@
 
     // ── taille fidele au mixin ────────────────────────────────────────────────
     function sizeLevels(curve, max, min) {
+      max = max / 10; min = min / 10;   // le nom encode des px (1rem = 10px) ; le mixin travaille en rem
       var c = CURVES[curve] || CURVES.text, step = (max - min) / 6, out = [];
       for (var i = 0; i < 8; i++) {
         out.push({
@@ -150,24 +151,25 @@
 
     // ── synthese CSS d'un style (nouveau) ─────────────────────────────────────
     // colors : { text, muted, accent } resolus a runtime (probes). ondark=#fff.
-    function synthCSS(selector, parsed, colors) {
+    function synthCSS(selector, parsed, colors, important) {
       var fam = famByKey[parsed.family];
       var curve = fam ? fam.curve : 'text';
       var levels = sizeLevels(curve, parsed.max, parsed.min);
       var mods = parsed.mods || [];
+      var imp = important ? ' !important' : '';
       var col = colors && colors.text || '#1c1c1c';
       if (mods.indexOf('ondark') !== -1) col = '#ffffff';
       else if (mods.indexOf('muted') !== -1) col = (colors && colors.muted) || col;
       else if (mods.indexOf('accent') !== -1) col = (colors && colors.accent) || col;
-      var decl = 'font-family:var(' + (fam ? fam.font : '--font-text') + ');';
-      decl += 'color:' + col + ';';
-      decl += 'text-transform:' + (mods.indexOf('caps') !== -1 ? 'uppercase' : 'none') + ';';
-      if (mods.indexOf('wide') !== -1) decl += 'letter-spacing:0.2em;';
-      decl += 'font-size:' + levels[0].fs + 'rem;line-height:' + levels[0].lh + 'rem;';
+      var decl = 'font-family:var(' + (fam ? fam.font : '--font-text') + ')' + imp + ';';
+      decl += 'color:' + col + imp + ';';
+      decl += 'text-transform:' + (mods.indexOf('caps') !== -1 ? 'uppercase' : 'none') + imp + ';';
+      if (mods.indexOf('wide') !== -1) decl += 'letter-spacing:0.2em' + imp + ';';
+      decl += 'font-size:' + levels[0].fs + 'rem' + imp + ';line-height:' + levels[0].lh + 'rem' + imp + ';';
       var css = '.' + selector + '{' + decl + '}';
       for (var i = 1; i < 8; i++) {
         css += '@media(min-width:' + MQ[i] + 'px){.' + selector +
-          '{font-size:' + levels[i].fs + 'rem;line-height:' + levels[i].lh + 'rem;}}';
+          '{font-size:' + levels[i].fs + 'rem' + imp + ';line-height:' + levels[i].lh + 'rem' + imp + ';}}';
       }
       return css;
     }
@@ -219,15 +221,15 @@ if (typeof require !== 'undefined' && require.main === module) {
   eq('build tri des mods', E.buildName('body', 12, 9, ['wide', 'caps', 'muted']), 'body-12-9-caps-muted-wide');
   eq('build taille simple', E.buildName('body-bold', 9, 9, ['ondark']), 'body-bold-9-ondark');
 
-  // taille fidele : font-size-text(1.7,1.4)
-  var lv = E.sizeLevels('text', 1.7, 1.4);
-  eq('text 1.7/1.4 @1920 (hd)', lv[7].fs, 1.7);
-  eq('text 1.7/1.4 @1600 (desktop)', lv[6].fs, 1.65);
-  eq('text 1.7/1.4 @768 (tablet)', lv[3].fs, 1.5);
-  eq('sizeAt vw=1440', E.sizeAt('text', 1.7, 1.4, 1440), 1.6);   // bucket laptop 1366
-  eq('sizeAt vw=500 (bucket 361)', E.sizeAt('text', 1.7, 1.4, 500), 1.4);
-  // cta(5.4,3.5) @1920 = 5.4
-  eq('cta 5.4/3.5 @1920', E.sizeLevels('cta', 5.4, 3.5)[7].fs, 5.4);
+  // taille fidele : body-17-14 (nom en px) -> font-size-text donne 1.7rem en hd
+  var lv = E.sizeLevels('text', 17, 14);
+  eq('text 17/14 @1920 (hd)', lv[7].fs, 1.7);
+  eq('text 17/14 @1600 (desktop)', lv[6].fs, 1.65);
+  eq('text 17/14 @768 (tablet)', lv[3].fs, 1.5);
+  eq('sizeAt vw=1440', E.sizeAt('text', 17, 14, 1440), 1.6);   // bucket laptop 1366
+  eq('sizeAt vw=500 (bucket 361)', E.sizeAt('text', 17, 14, 500), 1.4);
+  eq('cta 54/35 @1920', E.sizeLevels('cta', 54, 35)[7].fs, 5.4);
+  eq('title-78-42 @1920 = 7.8rem (78px, pas 780)', E.sizeLevels('title', 78, 42)[7].fs, 7.8);
 
   // resolution
   eq('resolve alias font2-title-style', E.resolve('font2-title-style').canonical, 'title-54-35');
