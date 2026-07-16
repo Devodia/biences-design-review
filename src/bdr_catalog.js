@@ -1,6 +1,6 @@
-/* Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor). Ne pas editer a la main. */
+/* Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor), auto-scan. Ne pas editer a la main. */
 window.BDR_CATALOG = {
-  "_note": "Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor). Ne pas editer a la main.",
+  "_note": "Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor), auto-scan. Ne pas editer a la main.",
   "nomenclature": "{famille}-{max}-{min}[-mods]  (1rem=10px)",
   "families": [
     {
@@ -121,13 +121,13 @@ window.BDR_CATALOG = {
     "title-it-54-35"
   ],
   "roles": {
-    "product-name": "body-14-12-caps",
-    "price-discount": "body-14-11",
-    "price-base": "body-12-9-caps-wide",
-    "price-strike": "body-14-11-ondark",
     "eyebrow": "body-18-12-caps-wide",
     "eyebrow-sm": "body-bold-13-10-caps-wide",
-    "link-accent": "body-13-10-caps-accent-wide"
+    "link-accent": "body-13-10-caps-accent-wide",
+    "price-base": "body-12-9-caps-wide",
+    "price-discount": "body-14-11",
+    "price-strike": "body-14-11-ondark",
+    "product-name": "body-14-12-caps"
   },
   "components": {
     "Boutons (CTA)": [
