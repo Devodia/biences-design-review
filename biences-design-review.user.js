@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.23.0
+// @version      0.24.0
 // @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -493,6 +493,7 @@ window.BDR_CATALOG = {
   var colors = { text: '#1c1c1c', muted: '#8a8a8a', accent: '#e87722' };
   var multiGroup = null;
   var showAfter = false;
+  var pausedShowAfter = false;     // etat avant/apres a restaurer a la reprise (la pause rend la page neutre)
   var pageLocked = false;
   var newStyleSheet = null;
   var injectedCSS = {};
@@ -913,7 +914,7 @@ window.BDR_CATALOG = {
       #bdr-root *{box-sizing:border-box;}
       [data-bdr="ds"]{outline:1px dashed rgba(120,140,170,.35) !important;outline-offset:1px !important;}
       [data-bdr-sel]{outline:none !important;}
-      [data-bdr-v]{outline:2px solid rgba(45,212,191,.55) !important;outline-offset:2px !important;}
+      [data-bdr-live] [data-bdr-v]{outline:2px solid rgba(45,212,191,.55) !important;outline-offset:2px !important;}
       #bdr-hovbox,#bdr-selbox{position:fixed;pointer-events:none;display:none;border-radius:4px;}
       #bdr-hovbox{border:2px dashed #fbbf24;background:rgba(251,191,36,.06);}
       #bdr-selbox{border:2px solid #22c55e;background:rgba(34,197,94,.07);box-shadow:0 0 0 1px rgba(34,197,94,.3),0 0 16px rgba(34,197,94,.28);}
@@ -1483,9 +1484,10 @@ window.BDR_CATALOG = {
   function toggleLock() {
     pageLocked = !pageLocked;
     if (pageLocked) {
-      applyBA(true);
+      applyBA(true); pausedShowAfter = true;   // le verrou fige volontairement la page sur les propositions
       reviewMode = false; unpaint(); clearHover(); unmarkSelected();
-      selected = null; selPath = null; selBox.style.display = 'none'; clearMulti();
+      document.documentElement.removeAttribute('data-bdr-live');
+      selected = null; selPath = null; selBox.style.display = 'none'; clearMulti(); clearOne();
       view = 'review'; syncState(); renderSelected();
       toast('Page verrouillée — navigue vers la suivante');
     } else { toast('Revue reprise'); renderReport(); }
@@ -1499,7 +1501,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.23.0',
+      tool: 'biences-design-review', version: '0.24.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1511,10 +1513,26 @@ window.BDR_CATALOG = {
     toast(feedbacks.length + ' modification(s) exportée(s)');
   }
 
+  // En pause, la page doit s'afficher comme si le script n'etait pas la : on retire
+  // toutes les marques de revue (pointilles, cadres, cerclages, propositions
+  // appliquees, feuille des styles crees) sans rien detruire du travail en cours,
+  // et la reprise remet tout en place.
   function toggle() {
     reviewMode = !reviewMode;
-    if (reviewMode) { pageLocked = false; expand(); paint(); }
-    else { unpaint(); clearHover(); }
+    if (reviewMode) {
+      pageLocked = false; expand();
+      document.documentElement.setAttribute('data-bdr-live', '');
+      if (newStyleSheet) newStyleSheet.disabled = false;
+      applyBA(pausedShowAfter); paint();
+    } else {
+      clearDyn();                       // avant applyBA : restorePreview reecrit l'etat "apres"
+      pausedShowAfter = showAfter; applyBA(false);
+      if (newStyleSheet) newStyleSheet.disabled = true;
+      document.documentElement.removeAttribute('data-bdr-live');
+      unpaint(); clearHover(); unmarkSelected();
+      selected = null; selPath = null; selBox.style.display = 'none';
+      clearMulti(); clearOne(); collapse();
+    }
     syncState(); renderSelected();
   }
 
@@ -1561,11 +1579,11 @@ window.BDR_CATALOG = {
     if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
-  addEventListener('resize', function () { renderRes(); if (reviewMode) paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
-  addEventListener('scroll', function () { if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); paintMulti(); }, true);
+  addEventListener('resize', function () { renderRes(); if (!reviewMode) return; paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
+  addEventListener('scroll', function () { if (!reviewMode) return; if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); paintMulti(); }, true);
   addEventListener('keydown', function (e) {
     if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); return; }
-    if (e.key === 'Escape') {
+    if (reviewMode && e.key === 'Escape') {
       if (inField()) { document.activeElement.blur(); return; }
       if (dynBox.firstChild) { clearDyn(); renderSelected(); }
       else if (selected) deselect();
@@ -1590,5 +1608,5 @@ window.BDR_CATALOG = {
   collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.23.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.24.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
