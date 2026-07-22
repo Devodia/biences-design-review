@@ -1,4 +1,4 @@
-/* Biences Design Review v0.26.0 — standalone (coller dans la console devtools). */
+/* Biences Design Review v0.27.0 — standalone (coller dans la console devtools). */
 
 /* Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor), auto-scan. Ne pas editer a la main. */
 window.BDR_CATALOG = {
@@ -1507,12 +1507,15 @@ window.BDR_CATALOG = {
   /* ---- barre / divers ---------------------------------------------------- */
   function renderRes() { resBadge.textContent = breakpoint() + ' ' + innerWidth + '×' + innerHeight; }
   function renderTray() { countBadge.textContent = 'Modifications enregistrées · ' + feedbacks.length; }
-  function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; }
-  function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; }
+  // Etat ouvert/replie memorise (sessionStorage) pour que le panneau garde sa
+  // position au fil des navigations : le userscript se re-injecte a chaque page
+  // et bootait toujours replie -> il "se fermait" a chaque navigation.
+  function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; try { sessionStorage.setItem('bdr_open', '0'); } catch (e) {} }
+  function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; try { sessionStorage.setItem('bdr_open', '1'); } catch (e) {} }
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.26.0',
+      tool: 'biences-design-review', version: '0.27.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1639,8 +1642,13 @@ window.BDR_CATALOG = {
   try { new MutationObserver(patchDialogs).observe(document.documentElement, { attributes: true, attributeFilter: ['open'], childList: true, subtree: true }); } catch (e) {}
   buildTokens(); resolveColors(); buildFonts(); loadReport();
   renderRes(); renderTray(); syncState(); renderSelected();
-  setDock(dockLeft); collapse();
+  setDock(dockLeft);
+  // Restaure l'etat ouvert/replie de la page precedente, SANS animer le
+  // glissement au chargement (sinon le panneau "slide" a chaque navigation).
+  var bootOpen = false; try { bootOpen = sessionStorage.getItem('bdr_open') === '1'; } catch (e) {}
+  if (bootOpen) { panel.style.transition = 'none'; expand(); void panel.offsetWidth; panel.style.transition = ''; }
+  else collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, setDock: setDock, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.26.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.27.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();

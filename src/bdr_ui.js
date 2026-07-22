@@ -1057,8 +1057,11 @@
   /* ---- barre / divers ---------------------------------------------------- */
   function renderRes() { resBadge.textContent = breakpoint() + ' ' + innerWidth + '×' + innerHeight; }
   function renderTray() { countBadge.textContent = 'Modifications enregistrées · ' + feedbacks.length; }
-  function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; }
-  function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; }
+  // Etat ouvert/replie memorise (sessionStorage) pour que le panneau garde sa
+  // position au fil des navigations : le userscript se re-injecte a chaque page
+  // et bootait toujours replie -> il "se fermait" a chaque navigation.
+  function collapse() { panel.classList.add('collapsed'); reopen.style.display = 'block'; try { sessionStorage.setItem('bdr_open', '0'); } catch (e) {} }
+  function expand() { panel.classList.remove('collapsed'); reopen.style.display = 'none'; try { sessionStorage.setItem('bdr_open', '1'); } catch (e) {} }
 
   function exportJSON() {
     var payload = {
@@ -1189,7 +1192,12 @@
   try { new MutationObserver(patchDialogs).observe(document.documentElement, { attributes: true, attributeFilter: ['open'], childList: true, subtree: true }); } catch (e) {}
   buildTokens(); resolveColors(); buildFonts(); loadReport();
   renderRes(); renderTray(); syncState(); renderSelected();
-  setDock(dockLeft); collapse();
+  setDock(dockLeft);
+  // Restaure l'etat ouvert/replie de la page precedente, SANS animer le
+  // glissement au chargement (sinon le panneau "slide" a chaque navigation).
+  var bootOpen = false; try { bootOpen = sessionStorage.getItem('bdr_open') === '1'; } catch (e) {}
+  if (bootOpen) { panel.style.transition = 'none'; expand(); void panel.offsetWidth; panel.style.transition = ''; }
+  else collapse();
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, setDock: setDock, engine: E, catalog: CAT, colors: colors };
   console.log('[BDR] v__BDR_VERSION__ prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
