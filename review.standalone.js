@@ -1,4 +1,4 @@
-/* Biences Design Review v0.24.0 — standalone (coller dans la console devtools). */
+/* Biences Design Review v0.26.0 — standalone (coller dans la console devtools). */
 
 /* Genere par gen_ds_catalog.py — SoT = ds/*.scss (css-refactor), auto-scan. Ne pas editer a la main. */
 window.BDR_CATALOG = {
@@ -920,10 +920,19 @@ window.BDR_CATALOG = {
       .bdr-msel-row .txt{flex:1;min-width:0;color:#e6eaf0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       .bdr-msel-row .prov{color:#8896a8;font-family:ui-monospace,monospace;font-size:10px;white-space:nowrap;max-width:42%;overflow:hidden;text-overflow:ellipsis;}
       .bdr-msel-row .rm{cursor:pointer;color:#6b7b8d;font-size:15px;line-height:1;padding:0 3px;flex:0 0 auto;} .bdr-msel-row .rm:hover{color:#fca5a5;}
-      #bdr-panel{position:fixed;top:0;right:0;bottom:0;width:360px;z-index:${Z};pointer-events:auto;display:flex;flex-direction:column;background:#0f1620;color:#e6eaf0;font-size:12.5px;line-height:1.45;border-left:1px solid #22303f;box-shadow:-14px 0 44px rgba(0,0,0,.45);transition:transform .22s cubic-bezier(.4,0,.2,1);}
+      /* width plafonnee pour toujours laisser une bande de page atteignable a
+         cote du panneau (sinon, sur petit ecran, un panneau de 360px recouvre
+         un menu responsive pleine largeur des deux cotes). Desktop inchange. */
+      #bdr-panel{position:fixed;top:0;right:0;bottom:0;width:min(360px, calc(100vw - 120px));z-index:${Z};pointer-events:auto;display:flex;flex-direction:column;background:#0f1620;color:#e6eaf0;font-size:12.5px;line-height:1.45;border-left:1px solid #22303f;box-shadow:-14px 0 44px rgba(0,0,0,.45);transition:transform .22s cubic-bezier(.4,0,.2,1);}
       #bdr-panel.collapsed{transform:translateX(100%);}
       #bdr-reopen{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:${Z};pointer-events:auto;display:none;background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;padding:15px 8px;border-radius:11px 0 0 11px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.02em;writing-mode:vertical-rl;box-shadow:-4px 0 18px rgba(0,0,0,.35);}
       #bdr-reopen:hover{filter:brightness(1.07);}
+      /* Dock a gauche : le tiroir des menus responsive est ancre a DROITE, du
+         meme cote que le panneau -> il le recouvrait. Docke a gauche, le panneau
+         libere le menu (clic sur ses items possible). */
+      #bdr-panel.dock-left{right:auto;left:0;border-left:none;border-right:1px solid #22303f;box-shadow:14px 0 44px rgba(0,0,0,.45);}
+      #bdr-panel.dock-left.collapsed{transform:translateX(-100%);}
+      #bdr-reopen.dock-left{right:auto;left:0;border-radius:0 11px 11px 0;box-shadow:4px 0 18px rgba(0,0,0,.35);}
       .bdr-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #1b2634;background:#0b1119;}
       .bdr-brand{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:700;white-space:nowrap;}
       .bdr-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e;flex:0 0 auto;}
@@ -1051,14 +1060,28 @@ window.BDR_CATALOG = {
   var dynBox = h('div', { class: 'bdr-dyn' });
   var topZone = h('div', { id: 'bdr-top' });
 
+  var dockBtn = h('button', { class: 'bdr-icon', title: 'Changer de côté (gauche/droite) — utile pour le menu responsive', text: '⇋', onclick: function () { setDock(!dockLeft); } });
   var panel = h('div', { id: 'bdr-panel', class: 'collapsed' },
     h('div', { class: 'bdr-hd' },
       h('div', { class: 'bdr-brand' }, h('span', { class: 'bdr-dot' }), 'Design Review'),
-      h('button', { class: 'bdr-icon', title: 'Cacher (rouvre via l’onglet à droite)', text: '⟩', onclick: collapse })),
+      h('div', { style: 'display:flex;gap:2px' }, dockBtn,
+        h('button', { class: 'bdr-icon', title: 'Cacher (rouvre via l’onglet)', text: '⟩', onclick: collapse }))),
     topZone, selCard, verbsBox, dynBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
   var reopen = h('div', { id: 'bdr-reopen', title: 'Ouvrir Design Review', text: '◀ Design Review', onclick: expand });
+
+  // Cote d'ancrage du panneau. TOUJOURS a GAUCHE : les tiroirs du site (menu
+  // responsive, avis) sont ancres a DROITE, un panneau a gauche ne les recouvre
+  // jamais. Pas de preference persistee (la gauche resout les conflits d'emblee).
+  // Le bouton ⇋ permet un deplacement ponctuel a droite dans la session.
+  var dockLeft = true;
+  function setDock(left) {
+    dockLeft = left;
+    panel.classList.toggle('dock-left', left);
+    reopen.classList.toggle('dock-left', left);
+    reopen.textContent = left ? 'Design Review ▶' : '◀ Design Review';
+  }
 
   function syncState() {
     topZone.innerHTML = '';
@@ -1489,7 +1512,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.24.0',
+      tool: 'biences-design-review', version: '0.26.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1499,6 +1522,25 @@ window.BDR_CATALOG = {
     var a = h('a', { href: URL.createObjectURL(blob), download: 'review_' + location.hostname + '_' + feedbacks.length + '.json' });
     root.appendChild(a); a.click(); a.remove();
     toast(feedbacks.length + ' modification(s) exportée(s)');
+  }
+
+  // ─── Compat tiroirs <dialog> (menu responsive...) : beaucoup de ces tiroirs se
+  // ferment « au clic exterieur » en testant dialog.contains(cible). Un clic dans
+  // le panneau BDR echouait ce test (le panneau est hors du dialog) -> le tiroir
+  // se fermait des qu'on touchait le panneau (y compris le bouton « Demarrer la
+  // revue » AVANT que la revue soit active). On patche contains() des <dialog>
+  // pour que les noeuds du panneau BDR comptent comme INTERNES : cliquer l'UI du
+  // BDR ne ferme jamais un tiroir. Le panneau ne bouge pas (pas de re-parentage
+  // -> pas de casse de position:fixed sous un ancetre transforme, header sticky).
+  // Generique (tout <dialog>) ; n'affecte que les contains() portant sur des
+  // noeuds BDR ; ESC / clic hors panneau ferment toujours normalement.
+  function patchDialogs() {
+    var origContains = Node.prototype.contains;
+    document.querySelectorAll('dialog').forEach(function (d) {
+      if (d.__bdrContains) return;
+      d.__bdrContains = true;
+      d.contains = function (n) { return origContains.call(this, n) || root.contains(n); };
+    });
   }
 
   // En pause, la page doit s'afficher comme si le script n'etait pas la : on retire
@@ -1591,10 +1633,14 @@ window.BDR_CATALOG = {
   /* ---- boot --------------------------------------------------------------- */
   root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(oneBox); root.appendChild(multiLayer); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
+  // Patche les <dialog> presents + ceux qui apparaissent/s'ouvrent ensuite
+  // (attribut open), pour la compat "clic exterieur" (cf. patchDialogs).
+  patchDialogs();
+  try { new MutationObserver(patchDialogs).observe(document.documentElement, { attributes: true, attributeFilter: ['open'], childList: true, subtree: true }); } catch (e) {}
   buildTokens(); resolveColors(); buildFonts(); loadReport();
   renderRes(); renderTray(); syncState(); renderSelected();
-  collapse();
+  setDock(dockLeft); collapse();
 
-  window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.24.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, setDock: setDock, engine: E, catalog: CAT, colors: colors };
+  console.log('[BDR] v0.26.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
