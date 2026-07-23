@@ -46,7 +46,7 @@ if cut != -1:
     engine = engine[:cut].rstrip() + "\n"
 ui = read("bdr_ui.js").strip()
 
-VERSION = "0.27.0"    # source unique de la version (injectee dans l'entete + le code)
+VERSION = "0.28.0"    # source unique de la version (injectee dans l'entete + le code)
 SEP = "\n\n"
 userscript = (HEADER + SEP + catalog + SEP + engine + SEP + ui + "\n").replace("__VER__", VERSION).replace("__BDR_VERSION__", VERSION)
 standalone = ("/* Biences Design Review v" + VERSION + " — standalone (coller dans la console devtools). */"

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.27.0
+// @version      0.28.0
 // @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -1527,7 +1527,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.27.0',
+      tool: 'biences-design-review', version: '0.28.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       created_styles: createdStyles, feedbacks: feedbacks
     };
@@ -1654,13 +1654,18 @@ window.BDR_CATALOG = {
   try { new MutationObserver(patchDialogs).observe(document.documentElement, { attributes: true, attributeFilter: ['open'], childList: true, subtree: true }); } catch (e) {}
   buildTokens(); resolveColors(); buildFonts(); loadReport();
   renderRes(); renderTray(); syncState(); renderSelected();
-  setDock(dockLeft);
-  // Restaure l'etat ouvert/replie de la page precedente, SANS animer le
-  // glissement au chargement (sinon le panneau "slide" a chaque navigation).
+  // Applique l'etat initial (cote docke gauche + ouvert/replie memorise) SANS
+  // animer : le panneau est cree en 'collapsed' (transform a DROITE) puis setDock
+  // le passe a GAUCHE ; transition active, le panneau replie glisserait a travers
+  // l'ecran a CHAQUE chargement de page (retour Manuel). On coupe la transition
+  // pendant TOUTE la mise en place, puis on la reactive pour les toggles utilisateur.
   var bootOpen = false; try { bootOpen = sessionStorage.getItem('bdr_open') === '1'; } catch (e) {}
-  if (bootOpen) { panel.style.transition = 'none'; expand(); void panel.offsetWidth; panel.style.transition = ''; }
-  else collapse();
+  panel.style.transition = 'none';
+  setDock(dockLeft);
+  (bootOpen ? expand : collapse)();
+  void panel.offsetWidth;          // reflow : fige l'etat sans transition
+  panel.style.transition = '';     // reactive l'animation pour les ouvertures/fermetures manuelles
 
   window.__bdr = { toggle: toggle, get feedbacks() { return feedbacks; }, export: exportJSON, clear: clearReport, setDock: setDock, engine: E, catalog: CAT, colors: colors };
-  console.log('[BDR] v0.27.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.28.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
 })();
