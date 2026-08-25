@@ -7,7 +7,7 @@ puis  git commit -am "..."  &&  git push
 (le push met a jour le Tampermonkey d'Eliott via @updateURL).
 
 Regenerer le catalogue (uniquement si les ds/*.scss du theme ont change) :
-    python src/gen_ds_catalog.py     # necessite le clone Odoo css-refactor
+    python src/gen_ds_catalog.py     # lit ds/*.scss du clone europe-account
 
 Ordre d'assemblage (execution sequentielle dans un seul contexte navigateur) :
     bdr_catalog.js -> window.BDR_CATALOG
@@ -29,7 +29,7 @@ HEADER = """// ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
 // @version      __VER__
-// @description  Revue visuelle du design system Biences : remplacer / creer un style (builder famille-tailles-mods) / multi-selection / avant-apres. Rapport JSON pour Claude Code.
+// @description  Revue visuelle du design system Biences (vocabulaire ATOMIQUE f-/s-/c-/m-/h-) : changer un axe, migrer un ancien cran, creer une taille. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
 // @downloadURL  https://raw.githubusercontent.com/Devodia/biences-design-review/main/biences-design-review.user.js
@@ -46,7 +46,7 @@ if cut != -1:
     engine = engine[:cut].rstrip() + "\n"
 ui = read("bdr_ui.js").strip()
 
-VERSION = "0.28.0"    # source unique de la version (injectee dans l'entete + le code)
+VERSION = "0.30.0"    # source unique de la version (injectee dans l'entete + le code)
 SEP = "\n\n"
 userscript = (HEADER + SEP + catalog + SEP + engine + SEP + ui + "\n").replace("__VER__", VERSION).replace("__BDR_VERSION__", VERSION)
 standalone = ("/* Biences Design Review v" + VERSION + " — standalone (coller dans la console devtools). */"

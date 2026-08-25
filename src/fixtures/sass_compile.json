@@ -1,0 +1,350 @@
+{
+ "s-10": {
+  "0": {
+   "font-size": "10px"
+  }
+ },
+ "s-12-11": {
+  "0": {
+   "font-size": "clamp(1.1rem, 1.1rem + 1 * (100vw - 361px) / 1559, 1.2rem)",
+   "line-height": "clamp(1.331rem, 1.331rem + 2.53 * (100vw - 361px) / 1559, 1.584rem)"
+  }
+ },
+ "s-12-9": {
+  "0": {
+   "font-size": "clamp(0.9rem, 0.9rem + 3 * (100vw - 361px) / 1559, 1.2rem)",
+   "line-height": "clamp(1.089rem, 1.089rem + 4.95 * (100vw - 361px) / 1559, 1.584rem)"
+  }
+ },
+ "s-13-10": {
+  "0": {
+   "font-size": "clamp(1rem, 1rem + 3 * (100vw - 361px) / 1559, 1.3rem)",
+   "line-height": "clamp(1.21rem, 1.21rem + 5.06 * (100vw - 361px) / 1559, 1.716rem)"
+  }
+ },
+ "s-14-11": {
+  "0": {
+   "font-size": "clamp(1.1rem, 1.1rem + 3 * (100vw - 361px) / 1559, 1.4rem)",
+   "line-height": "clamp(1.331rem, 1.331rem + 5.17 * (100vw - 361px) / 1559, 1.848rem)"
+  }
+ },
+ "s-14-12": {
+  "0": {
+   "font-size": "clamp(1.2rem, 1.2rem + 2 * (100vw - 361px) / 1559, 1.4rem)",
+   "line-height": "clamp(1.452rem, 1.452rem + 3.96 * (100vw - 361px) / 1559, 1.848rem)"
+  }
+ },
+ "s-15-12": {
+  "0": {
+   "font-size": "clamp(1.2rem, 1.2rem + 3 * (100vw - 361px) / 1559, 1.5rem)",
+   "line-height": "clamp(1.452rem, 1.452rem + 5.28 * (100vw - 361px) / 1559, 1.98rem)"
+  }
+ },
+ "s-16-13": {
+  "0": {
+   "font-size": "clamp(1.3rem, 1.3rem + 3 * (100vw - 361px) / 1559, 1.6rem)",
+   "line-height": "clamp(1.573rem, 1.573rem + 5.39 * (100vw - 361px) / 1559, 2.112rem)"
+  }
+ },
+ "s-17-14": {
+  "0": {
+   "font-size": "clamp(1.4rem, 1.4rem + 3 * (100vw - 361px) / 1559, 1.7rem)",
+   "line-height": "clamp(1.694rem, 1.694rem + 5.5 * (100vw - 361px) / 1559, 2.244rem)"
+  }
+ },
+ "s-18-15": {
+  "0": {
+   "font-size": "clamp(1.5rem, 1.5rem + 3 * (100vw - 361px) / 1559, 1.8rem)",
+   "line-height": "clamp(1.815rem, 1.815rem + 5.61 * (100vw - 361px) / 1559, 2.376rem)"
+  }
+ },
+ "s-18-16": {
+  "0": {
+   "font-size": "clamp(1.6rem, 1.6rem + 2 * (100vw - 361px) / 1559, 1.8rem)",
+   "line-height": "clamp(1.936rem, 1.936rem + 4.4 * (100vw - 361px) / 1559, 2.376rem)"
+  }
+ },
+ "s-24-21": {
+  "0": {
+   "font-size": "clamp(2.1rem, 2.1rem + 3 * (100vw - 361px) / 1559, 2.4rem)",
+   "line-height": "clamp(2.541rem, 2.541rem + 6.27 * (100vw - 361px) / 1559, 3.168rem)"
+  }
+ },
+ "s-25-20-cta": {
+  "0": {
+   "font-size": "2rem",
+   "line-height": "2.055187638rem"
+  },
+  "361": {
+   "font-size": "2.1208897485rem",
+   "line-height": "2.3056822335rem"
+  },
+  "510": {
+   "font-size": "2.1643294649rem",
+   "line-height": "2.313434728rem"
+  },
+  "768": {
+   "font-size": "2.2077691812rem",
+   "line-height": "2.3259144928rem"
+  },
+  "1024": {
+   "font-size": "2.3696808511rem",
+   "line-height": "2.4644680851rem"
+  },
+  "1366": {
+   "font-size": "2.4131205674rem",
+   "line-height": "2.5579078014rem"
+  },
+  "1600": {
+   "font-size": "2.4565602837rem",
+   "line-height": "2.6530851064rem"
+  },
+  "1920": {
+   "font-size": "2.5rem",
+   "line-height": "2.75rem"
+  }
+ },
+ "s-30-24-cta": {
+  "0": {
+   "font-size": "2.4rem",
+   "line-height": "2.4662251656rem"
+  },
+  "361": {
+   "font-size": "2.5450676983rem",
+   "line-height": "2.7668186802rem"
+  },
+  "510": {
+   "font-size": "2.5971953578rem",
+   "line-height": "2.7761216736rem"
+  },
+  "768": {
+   "font-size": "2.6493230174rem",
+   "line-height": "2.7910973914rem"
+  },
+  "1024": {
+   "font-size": "2.8436170213rem",
+   "line-height": "2.9573617021rem"
+  },
+  "1366": {
+   "font-size": "2.8957446809rem",
+   "line-height": "3.0694893617rem"
+  },
+  "1600": {
+   "font-size": "2.9478723404rem",
+   "line-height": "3.1837021277rem"
+  },
+  "1920": {
+   "font-size": "3rem",
+   "line-height": "3.3rem"
+  }
+ },
+ "s-35-26-cta": {
+  "0": {
+   "font-size": "2.6rem",
+   "line-height": "2.6790754258rem"
+  },
+  "361": {
+   "font-size": "2.7893939394rem",
+   "line-height": "3.0537352209rem"
+  },
+  "510": {
+   "font-size": "2.8768939394rem",
+   "line-height": "3.0867010644rem"
+  },
+  "768": {
+   "font-size": "2.9643939394rem",
+   "line-height": "3.1281594379rem"
+  },
+  "1024": {
+   "font-size": "3.2375rem",
+   "line-height": "3.367rem"
+  },
+  "1366": {
+   "font-size": "3.325rem",
+   "line-height": "3.5245rem"
+  },
+  "1600": {
+   "font-size": "3.4125rem",
+   "line-height": "3.6855rem"
+  },
+  "1920": {
+   "font-size": "3.5rem",
+   "line-height": "3.85rem"
+  }
+ },
+ "s-40-33-cta": {
+  "0": {
+   "font-size": "3.3rem",
+   "line-height": "3.3875099443rem"
+  },
+  "361": {
+   "font-size": "3.4810422863rem",
+   "line-height": "3.7740152762rem"
+  },
+  "510": {
+   "font-size": "3.5379649985rem",
+   "line-height": "3.7760157381rem"
+  },
+  "768": {
+   "font-size": "3.5948877107rem",
+   "line-height": "3.7847285652rem"
+  },
+  "1024": {
+   "font-size": "3.8292318634rem",
+   "line-height": "3.982401138rem"
+  },
+  "1366": {
+   "font-size": "3.8861545756rem",
+   "line-height": "4.1193238502rem"
+  },
+  "1600": {
+   "font-size": "3.9430772878rem",
+   "line-height": "4.2585234708rem"
+  },
+  "1920": {
+   "font-size": "4rem",
+   "line-height": "4.4rem"
+  }
+ },
+ "s-40-35-cta": {
+  "0": {
+   "font-size": "3.5rem",
+   "line-height": "3.586100861rem"
+  },
+  "361": {
+   "font-size": "3.6502629602rem",
+   "line-height": "3.9378874512rem"
+  },
+  "510": {
+   "font-size": "3.6840095167rem",
+   "line-height": "3.9209625321rem"
+  },
+  "768": {
+   "font-size": "3.7177560731rem",
+   "line-height": "3.9091616988rem"
+  },
+  "1024": {
+   "font-size": "3.8987603306rem",
+   "line-height": "4.0547107438rem"
+  },
+  "1366": {
+   "font-size": "3.9325068871rem",
+   "line-height": "4.1684573003rem"
+  },
+  "1600": {
+   "font-size": "3.9662534435rem",
+   "line-height": "4.283553719rem"
+  },
+  "1920": {
+   "font-size": "4rem",
+   "line-height": "4.4rem"
+  }
+ },
+ "s-54-35-cta": {
+  "0": {
+   "font-size": "3.5rem",
+   "line-height": "3.6281529699rem"
+  },
+  "361": {
+   "font-size": "3.8291204209rem",
+   "line-height": "4.2536672543rem"
+  },
+  "510": {
+   "font-size": "4.0371773486rem",
+   "line-height": "4.3641584975rem"
+  },
+  "768": {
+   "font-size": "4.2452342764rem",
+   "line-height": "4.4937640366rem"
+  },
+  "1024": {
+   "font-size": "4.7758292167rem",
+   "line-height": "4.9668623853rem"
+  },
+  "1366": {
+   "font-size": "4.9838861444rem",
+   "line-height": "5.2829193131rem"
+  },
+  "1600": {
+   "font-size": "5.1919430722rem",
+   "line-height": "5.607298518rem"
+  },
+  "1920": {
+   "font-size": "5.4rem",
+   "line-height": "5.94rem"
+  }
+ },
+ "s-78-42-banner": {
+  "0": {
+   "font-size": "4.2rem",
+   "line-height": "4.9498361372rem"
+  },
+  "361": {
+   "font-size": "5.1242794424rem",
+   "line-height": "5.1242794424rem"
+  },
+  "510": {
+   "font-size": "4.9639248614rem",
+   "line-height": "5.01356411rem"
+  },
+  "768": {
+   "font-size": "5.0943407205rem",
+   "line-height": "5.1962275349rem"
+  },
+  "1024": {
+   "font-size": "6.5292910093rem",
+   "line-height": "6.7904626497rem"
+  },
+  "1366": {
+   "font-size": "6.9528606729rem",
+   "line-height": "7.3700323132rem"
+  },
+  "1600": {
+   "font-size": "7.3764303364rem",
+   "line-height": "7.9665447634rem"
+  },
+  "1920": {
+   "font-size": "7.8rem",
+   "line-height": "8.58rem"
+  }
+ },
+ "s-78-42-title": {
+  "0": {
+   "font-size": "4.2rem",
+   "line-height": "5.5695652174rem"
+  },
+  "361": {
+   "font-size": "4.36rem",
+   "line-height": "5.5050505051rem"
+  },
+  "510": {
+   "font-size": "4.6rem",
+   "line-height": "5.858rem"
+  },
+  "768": {
+   "font-size": "5.2448979592rem",
+   "line-height": "5.9097584541rem"
+  },
+  "1024": {
+   "font-size": "6.6rem",
+   "line-height": "6.864rem"
+  },
+  "1366": {
+   "font-size": "7rem",
+   "line-height": "7.42rem"
+  },
+  "1600": {
+   "font-size": "7.4rem",
+   "line-height": "7.992rem"
+  },
+  "1920": {
+   "font-size": "7.8rem",
+   "line-height": "8.58rem"
+  }
+ },
+ "s-9": {
+  "0": {
+   "font-size": "9px"
+  }
+ }
+}

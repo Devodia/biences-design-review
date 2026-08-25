@@ -1,5 +1,4 @@
-/* Genere par gen_ds_catalog.py — SoT = ds/*.scss (europe-account). Ne pas editer a la main. */
-window.BDR_CATALOG = {
+{
   "_note": "Genere par gen_ds_catalog.py — SoT = ds/*.scss (europe-account). Ne pas editer a la main.",
   "version": 3,
   "nomenclature": "f-<fonte> s-<max>-<min>[-rampe] [c-<couleur>] [m-<mod>…] [h-<survol>]  (1rem=10px)",
@@ -1862,4 +1861,4 @@ window.BDR_CATALOG = {
     "unavailable-2-style": "unavailable-cta-compact",
     "unavailable-style": "unavailable-cta"
   }
-};
+}
