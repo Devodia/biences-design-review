@@ -1,4 +1,4 @@
-/* Biences Design Review v0.30.1 — standalone (coller dans la console devtools). */
+/* Biences Design Review v0.31.0 — standalone (coller dans la console devtools). */
 
 /* Genere par gen_ds_catalog.py — SoT = ds/*.scss (europe-account). Ne pas editer a la main. */
 window.BDR_CATALOG = {
@@ -2521,6 +2521,70 @@ window.BDR_CATALOG = {
     el.setAttribute('class', orig);
     return before === after;
   }
+  /* ══ Un atome peut etre pose et ne rien peindre ═══════════════════════════
+   *
+   * Mesure du 25.08 sur la home du banc : un `<h3>` porte `s-30-24-cta`, qui
+   * rend ~29 px a 1440, et l'ecran sert **54 px**. La regle de `block-title`
+   * est plus specifique et gagne. Le panneau affichait donc un nom de cran que
+   * la page ne respecte pas, et un changement d'axe ne peignait rien : l'outil
+   * disait le contraire de l'ecran, ce qui est exactement ce qu'une revue
+   * visuelle ne doit jamais faire.
+   *
+   * Deux consequences, traitees toutes les deux :
+   *   - on le DIT (badge « écrasé » sur la ligne d'axe, avec la valeur servie) ;
+   *   - on FORCE le rendu quand on change cet axe, sinon Eliott validerait un
+   *     changement qu'il n'a pas vu.
+   *
+   * ⚠️ On ne force pas par principe : on MESURE d'abord. Forcer partout
+   * mettrait des `!important` sur toute la page et masquerait justement les
+   * ecrasements qu'on cherche a montrer.
+   */
+
+  // les proprietes qu'un atome declare, donc celles sur lesquelles le juger
+  function propsOfAtom(name) {
+    var a = E.parseAtom(name) || E.parseSizeName(name);
+    if (!a) return [];
+    if (a.axis === 's' || /^s-/.test(name)) return ['font-size', 'line-height'];
+    var out = [];
+    (a.decls || []).forEach(function (bloc) {
+      if (bloc[0]) return;                       // les blocs imbriques ne se jugent pas ici
+      bloc[1].forEach(function (kv) { if (out.indexOf(kv[0]) === -1) out.push(kv[0]); });
+    });
+    return out;
+  }
+  function sigOf(el, props) {
+    var cs = getComputedStyle(el);
+    return props.map(function (p) { return cs.getPropertyValue(p); }).join('|');
+  }
+
+  /* Pour une TAILLE, on ne se contente pas de « ca a bougé » : on compare la
+   * valeur servie a celle que le moteur annonce pour cette largeur. C'est le
+   * seul controle qui attrape un ecrasement quand aucun changement n'a eu lieu. */
+  function tailleEcrasee(el, atomName) {
+    var a = E.parseAtom(atomName) || E.parseSizeName(atomName);
+    if (!a || !(a.axis === 's' || /^s-/.test(atomName))) return null;
+    var attendu = E.sizeAt(a.curve, a.max, a.min, innerWidth);
+    var servi = parseFloat(getComputedStyle(el).fontSize);
+    if (!isFinite(servi) || !isFinite(attendu)) return null;
+    return Math.abs(servi - attendu) > 0.6 ? { attendu: attendu, servi: servi } : null;
+  }
+
+  // injecte une regle de POIDS FORT pour l'atome : classe doublee + !important
+  var forcedRule = {};
+  function forceRule(cls) {
+    if (forcedRule[cls]) return;
+    forcedRule[cls] = true;
+    var css = E.synthAtomCSS(cls, true);
+    if (!css) return;
+    // `.x` -> `.x.x` : (0,2,0), pour battre aussi une regle locale !important
+    // moins specifique. Le `!important` seul suffit dans la plupart des cas ;
+    // le doublement couvre celui ou la page en pose un aussi.
+    ensureSheet().appendChild(document.createTextNode(
+      css.replace(/\.([\w-]+)/g, function (m, nom) {
+        return nom === cls ? '.' + cls + '.' + cls : m;
+      })));
+  }
+
   function bgOf(el) {
     var cs = getComputedStyle(el);
     var c = cs.backgroundColor, img = cs.backgroundImage;
@@ -2606,7 +2670,18 @@ window.BDR_CATALOG = {
       return axisOf(c) !== axis;
     });
     out.push(atomName);
+    var props = propsOfAtom(atomName);
+    var avant = props.length ? sigOf(el, props) : null;
     el.setAttribute('class', out.join(' '));
+    // 🔴 VERIFIER L'EFFET, PAS L'INTENTION. Poser la classe ne prouve rien :
+    // si la cascade de la page gagne, l'ecran ne bouge pas et Eliott valide un
+    // changement qu'il n'a jamais vu.
+    if (props.length) {
+      var ecrase = tailleEcrasee(el, atomName);
+      if (ecrase || sigOf(el, props) === avant) {
+        forceRule(atomName);
+      }
+    }
   }
   function removeAtomFrom(el, atomName) {
     var list = expandLegacy(classesOf(el));
@@ -2776,6 +2851,8 @@ window.BDR_CATALOG = {
       .bdr-axk{flex:0 0 62px;color:#8fa3b8;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
       .bdr-axv{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;}
       .bdr-axtag{display:inline-flex;align-items:center;gap:4px;background:#16a34a22;color:#4ade80;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:600;}
+      .bdr-axtag.beat{background:#7c1d1d33;color:#fca5a5;}
+      .bdr-axbeat{font-weight:500;opacity:.85;}
       .bdr-axoff{cursor:pointer;color:#94a3b8;font-size:12px;line-height:1;} .bdr-axoff:hover{color:#fca5a5;}
       .bdr-axnone{color:#64748b;font-size:11px;font-style:italic;}
       .bdr-axrow.miss .bdr-axnone{color:#d9a441;font-style:normal;}
@@ -3221,7 +3298,17 @@ window.BDR_CATALOG = {
       if (val.length) {
         val.forEach(function (nm) {
           var at = E.parseAtom(nm);
-          var tag = h('span', { class: 'bdr-axtag', text: nm, title: at ? atomLabel(at) : nm });
+          var ecrase = tailleEcrasee(el, nm);
+          var tag = h('span', { class: 'bdr-axtag' + (ecrase ? ' beat' : ''), text: nm,
+            title: ecrase
+              ? 'Cette classe ne peint pas ici : la page sert ' + ecrase.servi.toFixed(1)
+                + ' px au lieu des ' + ecrase.attendu.toFixed(1) + ' px du cran. '
+                + 'Une règle plus spécifique gagne.'
+              : (at ? atomLabel(at) : nm) });
+          if (ecrase) {
+            tag.appendChild(h('span', { class: 'bdr-axbeat',
+              text: '⚠ ' + ecrase.servi.toFixed(0) + 'px' }));
+          }
           if (a.multiple) {
             tag.appendChild(h('span', { class: 'bdr-axoff', text: '×', title: 'Retirer ce mod',
               onclick: function (ev) { ev.stopPropagation(); commitRemoveAtom(nm); } }));
@@ -3546,7 +3633,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.30.1',
+      tool: 'biences-design-review', version: '0.31.0',
       site: location.hostname, exported_at: new Date().toISOString(),
       ds: { nomenclature: CAT.nomenclature, source: CAT.source },
       created_sizes: createdStyles, feedbacks: feedbacks
@@ -3698,5 +3785,5 @@ window.BDR_CATALOG = {
     select: select, applyAtom: applyAtomTo, removeAtom: removeAtomFrom,
     migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder
   };
-  console.log('[BDR] v0.30.1 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
+  console.log('[BDR] v0.31.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
 })();

@@ -266,6 +266,52 @@ def main():
         check("le SCSS livre omet le min, puisque c'est la regle",
               neuf["scss"].count(",") == 0)
 
+        # ── 🔴 LE CAS REMONTE PAR MANUEL LE 25.08 ────────────────────────
+        # Sur la home, le <h3> « Nos offres passagères » porte `s-54-35-cta` et
+        # une règle plus spécifique impose sa taille. L'atome ne gagnait pas, il
+        # rendait la MEME valeur par coïncidence. Poser `s-30-24-cta` changeait
+        # donc la classe sans rien changer à l'écran : l'outil affirmait un
+        # changement que la page refusait.
+        #
+        # Ce test rejoue exactement ce geste. Il demande de faire défiler la page
+        # (les carrousels produits se chargent au scroll), ce qui est le prix à
+        # payer pour mesurer sur le vrai élément plutôt que sur un témoin fabriqué.
+        cas = pg.evaluate("""() => {
+          const el = [...document.querySelectorAll('.block-title h3')]
+            .find(e => (e.textContent||'').includes('offres passag'));
+          return el ? el.getAttribute('class') : null;
+        }""")
+        if not cas:
+            for _ in range(14):
+                pg.mouse.wheel(0, 1200)
+                pg.wait_for_timeout(350)
+            pg.wait_for_timeout(1500)
+        force = pg.evaluate("""() => {
+          const E = window.BDR_makeEngine(window.BDR_CATALOG);
+          const el = [...document.querySelectorAll('.block-title h3')]
+            .find(e => (e.textContent||'').includes('offres passag'));
+          if (!el) return null;
+          const r = E.readClasses((el.getAttribute('class')||'').trim().split(/\\s+/).filter(Boolean));
+          if (!r.s) return null;
+          const act = E.parseAtom(r.s);
+          const cand = E.sizesByCurve(act.curve)
+            .filter(a => Math.abs(a.max - act.max) >= 8)
+            .sort((a,b) => Math.abs(b.max - act.max) - Math.abs(a.max - act.max))[0];
+          if (!cand) return null;
+          const avant = parseFloat(getComputedStyle(el).fontSize);
+          window.__bdr.applyAtom(el, cand.name);
+          return {vise: cand.name, avant: avant,
+                  apres: parseFloat(getComputedStyle(el).fontSize),
+                  attendu: E.sizeAt(cand.curve, cand.max, cand.min, window.innerWidth)};
+        }""")
+        if force:
+            print("  cascade : %s → %s, %.2f px → %.2f px (le cran vaut %.2f)"
+                  % (cas or "?", force["vise"], force["avant"], force["apres"], force["attendu"]))
+            check("un atome que la cascade écrase PEINT quand même",
+                  abs(force["apres"] - force["attendu"]) < 0.6)
+        else:
+            print("  (le <h3> du carrousel n'est pas sur cette page : cas non rejoué)")
+
         # ── le rapport ────────────────────────────────────────────────────
         rap = pg.evaluate("""() => {
           const el = document.querySelector('[data-bdr-cible]');
