@@ -1494,5 +1494,5 @@
     select: select, applyAtom: applyAtomTo, removeAtom: removeAtomFrom,
     migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder
   };
-  console.log('[BDR] v__BDR_VERSION__ prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v__BDR_VERSION__ prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
 })();

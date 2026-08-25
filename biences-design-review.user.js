@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Biences Design Review
 // @namespace    devodia.biences
-// @version      0.30.0
+// @version      0.30.1
 // @description  Revue visuelle du design system Biences (vocabulaire ATOMIQUE f-/s-/c-/m-/h-) : changer un axe, migrer un ancien cran, creer une taille. Rapport JSON pour Claude Code.
 // @match        https://*.dev.odoo.com/*
 // @match        https://*.biences.ch/*
@@ -3558,7 +3558,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.30.0',
+      tool: 'biences-design-review', version: '0.30.1',
       site: location.hostname, exported_at: new Date().toISOString(),
       ds: { nomenclature: CAT.nomenclature, source: CAT.source },
       created_sizes: createdStyles, feedbacks: feedbacks
@@ -3710,5 +3710,5 @@ window.BDR_CATALOG = {
     select: select, applyAtom: applyAtomTo, removeAtom: removeAtomFrom,
     migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder
   };
-  console.log('[BDR] v0.30.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.30.1 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
 })();

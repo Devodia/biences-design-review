@@ -1,4 +1,4 @@
-/* Biences Design Review v0.30.0 — standalone (coller dans la console devtools). */
+/* Biences Design Review v0.30.1 — standalone (coller dans la console devtools). */
 
 /* Genere par gen_ds_catalog.py — SoT = ds/*.scss (europe-account). Ne pas editer a la main. */
 window.BDR_CATALOG = {
@@ -3546,7 +3546,7 @@ window.BDR_CATALOG = {
 
   function exportJSON() {
     var payload = {
-      tool: 'biences-design-review', version: '0.30.0',
+      tool: 'biences-design-review', version: '0.30.1',
       site: location.hostname, exported_at: new Date().toISOString(),
       ds: { nomenclature: CAT.nomenclature, source: CAT.source },
       created_sizes: createdStyles, feedbacks: feedbacks
@@ -3698,5 +3698,5 @@ window.BDR_CATALOG = {
     select: select, applyAtom: applyAtomTo, removeAtom: removeAtomFrom,
     migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder
   };
-  console.log('[BDR] v0.30.0 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « Design Review » à droite, ou Alt+R.');
+  console.log('[BDR] v0.30.1 prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
 })();
