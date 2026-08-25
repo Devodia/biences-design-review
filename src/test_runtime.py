@@ -47,6 +47,8 @@ def main():
     ap.add_argument("--page", default="/histoire")
     ap.add_argument("--show", action="store_true")
     ap.add_argument("--largeur", type=int, default=1440)
+    ap.add_argument("--servi", action="store_true",
+                    help="mesure le script SERVI par GitHub, pas la copie locale")
     ap.add_argument("--lecture-seule", action="store_true", dest="lecture",
                     help="ne mesure QUE la lecture du vocabulaire : aucun clic, "
                          "aucun changement de classe. Seul mode autorise hors banc.")
@@ -55,7 +57,17 @@ def main():
         print("!! refus : hors d'un banc dev.odoo.com, seul --lecture-seule est permis")
         return 2
 
-    script = io.open(os.path.join(REPO, "review.standalone.js"), encoding="utf-8").read()
+    # Par defaut on mesure le fichier LOCAL. `--servi` mesure celui que GitHub
+    # sert reellement : c'est le seul qui prouve ce qu'Eliott recevra, un push
+    # pouvant tres bien reussir et servir autre chose.
+    if o.servi:
+        import urllib.request
+        url = ("https://raw.githubusercontent.com/Devodia/biences-design-review"
+               "/main/review.standalone.js")
+        script = urllib.request.urlopen(url, timeout=30).read().decode("utf-8")
+        print("  script mesure : celui SERVI par GitHub (%d octets)" % len(script))
+    else:
+        script = io.open(os.path.join(REPO, "review.standalone.js"), encoding="utf-8").read()
     erreurs = []
 
     with sync_playwright() as pw:

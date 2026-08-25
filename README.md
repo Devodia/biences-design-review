@@ -97,6 +97,7 @@ src/
 python src/gen_ds_catalog.py     # catalogue : 0 erreur de validation
 node src/bdr_engine.js           # moteur : 44 OK attendus
 python src/test_runtime.py       # recette runtime sur le banc europe-account
+python src/test_runtime.py --servi   # la meme, sur le script SERVI par GitHub
 node --check biences-design-review.user.js
 ```
 
@@ -110,6 +111,10 @@ Les deux contrôles portent un **témoin négatif** : le moteur rejoue une courb
 faussée et exige que la comparaison la refuse ; la recette runtime a été
 rejouée avec le geste destructeur de la v0.28 et signale bien les trois pertes
 (fonte, casse, interlettrage).
+
+`--servi` mesure le fichier que **GitHub sert reellement** au lieu de la copie
+locale : c'est le seul controle qui prouve ce qu'Eliott recevra, un push pouvant
+tres bien reussir et servir autre chose.
 
 La recette runtime refuse de tourner ailleurs que sur un banc `dev.odoo.com`,
 sauf en `--lecture-seule` (aucun clic, aucune classe modifiée) — mode à utiliser
