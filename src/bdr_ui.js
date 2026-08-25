@@ -76,7 +76,7 @@
   function removeFeedback(i) {
     var fb = feedbacks[i], els = fbEls.get(fb);
     if (els) { els.forEach(function (el) {
-      if (beforeOf.has(el)) { el.setAttribute('class', beforeOf.get(el)); el.removeAttribute('data-bdr-v'); var t = touchedEls.indexOf(el); if (t >= 0) touchedEls.splice(t, 1); beforeOf.delete(el); afterOf.delete(el); }
+      if (beforeOf.has(el)) { restoreSnap(el, beforeOf.get(el)); el.removeAttribute('data-bdr-v'); var t = touchedEls.indexOf(el); if (t >= 0) touchedEls.splice(t, 1); beforeOf.delete(el); afterOf.delete(el); }
     }); fbEls.delete(fb); }
     feedbacks.splice(i, 1); saveReport(); renderTray();
   }
@@ -98,6 +98,14 @@
     return e;
   }
   var classAttr = function (el) { return el.getAttribute('class') || ''; };
+  // instantané complet d'un élément : classe ET style inline (le forçage écrit
+  // en inline, cf. `forcerInline`) — sinon « Avant » ne rend pas la page.
+  function snapOf(el) { return { c: classAttr(el), s: el.getAttribute('style') || '' }; }
+  function restoreSnap(el, sn) {
+    if (typeof sn === 'string') sn = { c: sn, s: '' };   // rapports d'avant la v0.32
+    el.setAttribute('class', sn.c);
+    if (sn.s) el.setAttribute('style', sn.s); else el.removeAttribute('style');
+  }
   var breakpoint = function () { return innerWidth < 768 ? 'mobile' : innerWidth < 1024 ? 'tablet' : 'desktop'; };
   function chip(name, col) { return h('span', { class: 'bdr-chip', style: 'background:' + col + '22;color:' + col, text: name }); }
   function inField() { var a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable); }
@@ -381,6 +389,62 @@
       })));
   }
 
+  /* Dernier recours : le style INLINE, en `!important`.
+   *
+   * Mesure du 25.08 : une règle de page en `#id .classe { … !important }` pèse
+   * (1,1,0) et bat la règle forcée de BDR (classe doublée, (0,2,0)) quel que
+   * soit l'ordre des feuilles. Aucune règle injectée ne peut battre un ID ;
+   * seul l'inline le peut. Les tiroirs du site (panier, avis) sont précisément
+   * les endroits qui écrivent comme ça.
+   *
+   * ⚠️ Ce n'est PAS le mode normal. On n'y vient que si la classe forcée a
+   * échoué, mesuré sur l'élément. L'inline est mémorisé dans l'instantané,
+   * donc « Avant » et la pause le défont.
+   *
+   * ⚠️ Une rampe de titre est un ESCALIER de media-queries : elle ne rentre
+   * pas dans un attribut `style`. On y écrit donc la valeur de la largeur
+   * COURANTE, et on la recalcule au redimensionnement (`forcesInline`).
+   */
+  var forcesInline = [];
+  function valeursInline(atomName) {
+    var a = E.parseAtom(atomName) || E.parseSizeName(atomName);
+    if (!a) return [];
+    if (a.axis === 's' || /^s-/.test(atomName)) {
+      if (a.curve === 'fixed') return [['font-size', a.max + 'px']];
+      if (a.curve === 'text') {
+        var t = E.textTerms(a.max, a.min);
+        return [['font-size', E.clampCSS(t.fs)], ['line-height', E.clampCSS(t.lh)]];
+      }
+      var lv = E.ladderLevels(a.curve, a.max, a.min)[E.levelIndexFor(innerWidth)];
+      return [['font-size', lv.fs + 'rem'], ['line-height', lv.lh + 'rem']];
+    }
+    var out = [];
+    (a.decls || []).forEach(function (bloc) {
+      if (bloc[0]) return;
+      bloc[1].forEach(function (kv) {
+        out.push([kv[0], String(kv[1]).replace(/\s*!important\s*$/, '')]);
+      });
+    });
+    return out;
+  }
+  function forcerInline(el, atomName) {
+    var vals = valeursInline(atomName);
+    if (!vals.length) return;
+    vals.forEach(function (kv) { el.style.setProperty(kv[0], kv[1], 'important'); });
+    if (!forcesInline.some(function (f) { return f.el === el && f.atom === atomName; })) {
+      forcesInline.push({ el: el, atom: atomName });
+    }
+  }
+  // une rampe de titre dépend de la largeur : on la recalcule au redimensionnement
+  function rejouerForcesInline() {
+    forcesInline = forcesInline.filter(function (f) { return document.contains(f.el); });
+    forcesInline.forEach(function (f) {
+      valeursInline(f.atom).forEach(function (kv) {
+        f.el.style.setProperty(kv[0], kv[1], 'important');
+      });
+    });
+  }
+
   function bgOf(el) {
     var cs = getComputedStyle(el);
     var c = cs.backgroundColor, img = cs.backgroundImage;
@@ -473,9 +537,14 @@
     // si la cascade de la page gagne, l'ecran ne bouge pas et Eliott valide un
     // changement qu'il n'a jamais vu.
     if (props.length) {
-      var ecrase = tailleEcrasee(el, atomName);
-      if (ecrase || sigOf(el, props) === avant) {
+      // 1er contrôle : la classe a-t-elle peint ?
+      if (tailleEcrasee(el, atomName) || sigOf(el, props) === avant) {
         forceRule(atomName);
+        // 2e contrôle, APRÈS le forçage par règle : a-t-il suffi ? Un `#id`
+        // de la page le bat, et alors seul l'inline passe.
+        if (tailleEcrasee(el, atomName) || sigOf(el, props) === avant) {
+          forcerInline(el, atomName);
+        }
       }
     }
   }
@@ -493,15 +562,15 @@
 
   /* ---- registre avant/apres (classe uniquement) -------------------------- */
   function stage(el, apply) {
-    if (!beforeOf.has(el)) { beforeOf.set(el, classAttr(el)); touchedEls.push(el); }
+    if (!beforeOf.has(el)) { beforeOf.set(el, snapOf(el)); touchedEls.push(el); }
     apply(el);
-    afterOf.set(el, classAttr(el));
+    afterOf.set(el, snapOf(el));
     showAfter = true;
   }
   function applyBA(after) {
     showAfter = after;
     touchedEls.forEach(function (el) {
-      el.setAttribute('class', after ? afterOf.get(el) : beforeOf.get(el));
+      restoreSnap(el, after ? afterOf.get(el) : beforeOf.get(el));
       if (el === selected) { markSelected(el); boxAt(selBox, el); }
     });
     paintMulti();
@@ -1014,7 +1083,26 @@
   }
 
   /* ---- cibles + preview -------------------------------------------------- */
-  function targets() { return multiGroup ? multiGroup.els : (selected ? [selected] : []); }
+  /* 🔴 UNE CIBLE MEMORISEE PEUT AVOIR ETE REMPLACEE ENTRE-TEMPS.
+   * Les tiroirs du site (panier, avis) sont des composants qui re-rendent leur
+   * contenu : les noeuds ciblés deviennent DETACHES, et tout ce qu'on leur
+   * applique est invisible — le compteur annonce N, l'écran ne bouge pas.
+   * Mesuré le 25.08 : 0/3 peintes après un re-rendu.
+   * On relit donc le groupe par son sélecteur juste avant d'agir. */
+  function targets() {
+    if (!multiGroup) return selected && document.contains(selected) ? [selected] : (selected ? [selected] : []);
+    var vivants = multiGroup.els.filter(function (el) { return document.contains(el); });
+    if (vivants.length !== multiGroup.els.length) {
+      var frais = Array.prototype.slice.call(document.querySelectorAll('.' + CSS.escape(multiGroup.selector)))
+        .filter(function (el) { return !(el.closest && el.closest('#bdr-root')); });
+      if (frais.length) {
+        multiGroup.els = frais;
+        return frais;
+      }
+      multiGroup.els = vivants;
+    }
+    return multiGroup.els;
+  }
   function clearDyn() { restorePreview(); if (dynCleanup) { try { dynCleanup(); } catch (e) {} dynCleanup = null; } }
 
   var previewSaved = null;   // Map<el, snap>
@@ -1023,7 +1111,7 @@
     if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti();
   }
   function startPreview() {
-    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, classAttr(el)); }); }
+    if (!previewSaved) { previewSaved = new Map(); targets().forEach(function (el) { previewSaved.set(el, snapOf(el)); }); }
   }
   function previewAtom(atomName) {
     startPreview();
@@ -1034,7 +1122,7 @@
     applyToTargets(function (el) { removeAtomFrom(el, atomName); });
   }
   function restorePreview() {
-    if (previewSaved) { previewSaved.forEach(function (v, el) { el.setAttribute('class', v); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
+    if (previewSaved) { previewSaved.forEach(function (v, el) { restoreSnap(el, v); }); previewSaved = null; if (selected) { markSelected(selected); boxAt(selBox, selected); } paintMulti(); }
   }
 
   /* Enregistre un changement. `apply` dit ce qu'on fait a CHAQUE cible ; le
@@ -1252,12 +1340,12 @@
 
     var bldSaved = null;
     function previewSize(name) {
-      if (!bldSaved) { bldSaved = new Map(); targets().forEach(function (el) { bldSaved.set(el, classAttr(el)); }); }
+      if (!bldSaved) { bldSaved = new Map(); targets().forEach(function (el) { bldSaved.set(el, snapOf(el)); }); }
       applyToTargets(function (el) { applyAtomTo(el, name); });
     }
     function restoreBld() {
       if (bldSaved) {
-        bldSaved.forEach(function (v, el) { el.setAttribute('class', v); });
+        bldSaved.forEach(function (v, el) { restoreSnap(el, v); });
         bldSaved = null;
         if (selected) { markSelected(selected); boxAt(selBox, selected); }
         paintMulti();
@@ -1527,7 +1615,7 @@
     if (!reviewMode || (e.target.closest && e.target.closest('#bdr-root'))) return;
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
-  addEventListener('resize', function () { renderRes(); if (!reviewMode) return; paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
+  addEventListener('resize', function () { renderRes(); rejouerForcesInline(); if (!reviewMode) return; paint(); if (selected) { markSelected(selected); boxAt(selBox, selected); } boxAt(hovBox, hovered); paintMulti(); });
   addEventListener('scroll', function () { if (!reviewMode) return; if (selected) boxAt(selBox, selected); if (hovered) boxAt(hovBox, hovered); paintMulti(); }, true);
   addEventListener('keydown', function (e) {
     if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); toggle(); return; }
@@ -1579,7 +1667,10 @@
     export: exportJSON, clear: clearReport, setDock: setDock,
     engine: E, catalog: CAT, colors: colors,
     select: select, applyAtom: applyAtomTo, removeAtom: removeAtomFrom,
-    migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder
+    migrate: migrateEl, read: readEl, axisPicker: showAxisPicker, builder: showBuilder,
+    selectGroup: selectGroup, clearGroup: clearMulti, commitAtom: commitAtom,
+    previewAtom: previewAtom, restore: restorePreview,
+    get group() { return multiGroup ? multiGroup.els : []; }
   };
   console.log('[BDR] v__BDR_VERSION__ prêt — en pause, ' + feedbacks.length + ' modif(s) en mémoire. Onglet « ◀ Design Review » sur le bord GAUCHE (à mi-hauteur), ou Alt+R.');
 })();

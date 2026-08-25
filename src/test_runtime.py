@@ -312,6 +312,99 @@ def main():
         else:
             print("  (le <h3> du carrousel n'est pas sur cette page : cas non rejoué)")
 
+        # ── 🔴 LE TIROIR PANIER, remonte par Manuel le 25.08 ─────────────
+        # « quand je cible plusieurs elements, les modifs s'appliquent pas a
+        # toutes les cibles ». Deux mecanismes distincts, tous deux mesures a
+        # 0/N avant correction. On ne remplit PAS de panier pour les rejouer :
+        # un banc qui clique ecrit, et des temoins fabriques les isolent mieux.
+        tiroir = pg.evaluate("""() => {
+          const E = window.BDR_makeEngine(window.BDR_CATALOG);
+          const res = {};
+          const attendu = E.sizeAt('text', 24, 21, window.innerWidth);
+
+          // A. une regle de page en `#id .classe { !important }` : elle pese
+          // (1,1,0) et bat toute regle injectee. Seul l'inline passe.
+          const z = document.createElement('div');
+          z.id = 'bdr-temoin-a';
+          for (let i = 0; i < 4; i++) {
+            const p = document.createElement('p');
+            p.className = 'f-body s-14-11 bdr-t-a';
+            p.textContent = 'ligne ' + i;
+            z.appendChild(p);
+          }
+          document.body.appendChild(z);
+          const st = document.createElement('style');
+          st.textContent = '#bdr-temoin-a .bdr-t-a { font-size: 40px !important; }';
+          document.body.appendChild(st);
+          const ca = [...z.querySelectorAll('.bdr-t-a')];
+          ca.forEach(el => window.__bdr.applyAtom(el, 's-24-21'));
+          res.A = ca.filter(el => Math.abs(parseFloat(getComputedStyle(el).fontSize) - attendu) < 0.6).length;
+          res.An = ca.length;
+          z.remove(); st.remove();
+
+          // B. le composant se re-rend APRES le ciblage : les cibles memorisees
+          // deviennent des noeuds detaches, et le compteur ment.
+          const z2 = document.createElement('div');
+          z2.id = 'bdr-temoin-b';
+          for (let i = 0; i < 3; i++) {
+            const p = document.createElement('p');
+            p.className = 'f-body s-14-11 bdr-t-b';
+            p.textContent = 'item ' + i;
+            z2.appendChild(p);
+          }
+          document.body.appendChild(z2);
+          window.__bdr.select(z2.firstChild);
+          window.__bdr.selectGroup('bdr-t-b');
+          res.Bn = window.__bdr.group.length;
+          z2.innerHTML = z2.innerHTML;               // le re-rendu
+          window.__bdr.commitAtom('s-24-21');
+          res.B = [...z2.querySelectorAll('.bdr-t-b')]
+            .filter(el => Math.abs(parseFloat(getComputedStyle(el).fontSize) - attendu) < 0.6).length;
+          z2.remove();
+          window.__bdr.clearGroup();
+          return res;
+        }""")
+        print("  tiroir : règle #id !important %d/%d peintes · après re-rendu %d/%d"
+              % (tiroir["A"], tiroir["An"], tiroir["B"], tiroir["Bn"]))
+        check("une règle de page en #id !important ne bloque plus le changement",
+              tiroir["A"], tiroir["An"])
+        check("un composant qui se re-rend ne fait plus perdre les cibles",
+              tiroir["B"], tiroir["Bn"])
+
+        # ── la pause doit rendre la page NEUTRE, forçage inline compris ────
+        # Garantie de la v0.24. Le forçage écrit en inline : sans instantané du
+        # `style`, la pause laisserait des `!important` derrière elle.
+        neutre = pg.evaluate("""() => {
+          const el = document.createElement('p');
+          el.className = 'f-body s-14-11 bdr-t-c';
+          el.textContent = 'témoin de pause';
+          document.body.appendChild(el);
+          const st = document.createElement('style');
+          st.textContent = 'p.bdr-t-c.bdr-t-c { font-size: 41px !important; }';
+          document.body.appendChild(st);
+          const avant = parseFloat(getComputedStyle(el).fontSize);
+          window.__bdr.select(el);
+          window.__bdr.commitAtom('s-24-21');
+          const pendant = parseFloat(getComputedStyle(el).fontSize);
+          window.__bdr.toggle();                     // pause
+          const enPause = parseFloat(getComputedStyle(el).fontSize);
+          const styleReste = el.getAttribute('style') || '';
+          window.__bdr.toggle();                     // reprise
+          const apres = parseFloat(getComputedStyle(el).fontSize);
+          el.remove(); st.remove();
+          return {avant, pendant, enPause, apres, styleReste};
+        }""")
+        print("  pause : %.1f px → %.1f px (changé) → %.1f px (pause) → %.1f px (reprise)"
+              % (neutre["avant"], neutre["pendant"], neutre["enPause"], neutre["apres"]))
+        check("le changement peint malgré une règle plus forte",
+              abs(neutre["pendant"] - neutre["avant"]) > 1)
+        check("la pause rend la page à son état d'origine",
+              abs(neutre["enPause"] - neutre["avant"]) < 0.6)
+        check("la pause ne laisse aucun style inline derrière elle",
+              neutre["styleReste"], "")
+        check("la reprise restaure le changement",
+              abs(neutre["apres"] - neutre["pendant"]) < 0.6)
+
         # ── le rapport ────────────────────────────────────────────────────
         rap = pg.evaluate("""() => {
           const el = document.querySelector('[data-bdr-cible]');
