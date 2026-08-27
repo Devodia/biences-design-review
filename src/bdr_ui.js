@@ -727,7 +727,7 @@
       .bdr-scss{margin:7px 0;padding:7px 9px;border:1px solid #22303f;border-radius:7px;background:#0d141d;color:#93c5fd;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;white-space:pre-wrap;word-break:break-all;}
       .bdr-v.migrate{background:#7c5b1a33;border-color:#a97c2166;color:#fbbf24;}
       #bdr-onebox{position:fixed;pointer-events:none;display:none;border:2px solid #a855f7;background:rgba(168,85,247,.12);border-radius:4px;box-shadow:0 0 0 2px rgba(168,85,247,.3);}
-      .bdr-msel{max-height:300px;overflow-y:auto;margin-top:8px;border-top:1px solid #22303f;}
+      .bdr-msel{max-height:min(300px, 30vh);overflow-y:auto;margin-top:8px;border-top:1px solid #22303f;}
       .bdr-msel-row{display:flex;align-items:center;gap:7px;padding:5px 3px;border-bottom:1px solid #161f2b;font-size:11px;}
       .bdr-msel-row:hover{background:#1b2634;}
       .bdr-msel-row.hidden{opacity:.55;}
@@ -754,7 +754,7 @@
       .bdr-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e;flex:0 0 auto;}
       .bdr-icon{cursor:pointer;background:none;border:none;color:#8896a8;font-size:15px;line-height:1;padding:5px 9px;border-radius:7px;}
       .bdr-icon:hover{background:#1b2634;color:#e6eaf0;}
-      #bdr-top{padding:15px 16px;border-bottom:1px solid #1b2634;}
+      #bdr-top{flex:0 0 auto;padding:15px 16px;border-bottom:1px solid #1b2634;}
       .bdr-cta{display:block;width:100%;cursor:pointer;border:none;border-radius:11px;padding:13px;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#34d399,#22c55e);box-shadow:0 6px 18px rgba(34,197,94,.32);transition:transform .12s,box-shadow .12s;}
       .bdr-cta:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(34,197,94,.42);}
       .bdr-steps{display:flex;gap:6px;margin-top:13px;}
@@ -797,15 +797,24 @@
       .bdr-prop .fam{color:#c4b5fd;font-family:ui-monospace,monospace;background:#a855f71f;padding:1px 6px;border-radius:5px;}
       .bdr-warn{margin-top:10px;font-size:11px;color:#fcd34d;background:#78350f4d;border:1px solid #9a3412;border-radius:8px;padding:8px 10px;line-height:1.45;}
       .bdr-stack{margin-top:11px;border-top:1px solid #22303f;padding-top:8px;}
-      .bdr-stack-scroll{max-height:196px;overflow-y:auto;margin:0 -4px;padding:0 4px;}
+      .bdr-stack-scroll{max-height:min(196px, 22vh);overflow-y:auto;margin:0 -4px;padding:0 4px;}
       .bdr-stack-row{cursor:pointer;padding:3px 7px;border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;color:#8896a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       .bdr-stack-row:hover{background:#1b2634;color:#e6eaf0;} .bdr-stack-row.on{background:#22c55e26;color:#86efac;}
-      .bdr-verbs{display:flex;flex-wrap:wrap;gap:7px;padding:12px 14px 4px;}
+      /* Les VERBES sont les actions du panneau : « Ajouter une note » et les
+         changements d'axe. Retour Eliott du 25.08 : sur un portable ils
+         sortaient de l'ecran. Ils vivent donc HORS de la zone defilante, entre
+         elle et le pied, et se serrent eux-memes si la liste est longue. */
+      .bdr-verbs{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:7px;padding:12px 14px;max-height:34vh;overflow-y:auto;border-top:1px solid #1b2634;}
+      .bdr-verbs:empty{display:none;}
       .bdr-v{cursor:pointer;border:1px solid #2a3a4c;background:#182230;color:#e6eaf0;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:600;transition:background .12s;}
       .bdr-v:hover{background:#22303f;}
       .bdr-v.create{border-color:#3b82f6;color:#93c5fd;background:#3b82f614;}
       .bdr-v.multi{border-color:#a855f7;color:#d8b4fe;background:#a855f714;width:100%;text-align:left;}
-      .bdr-dyn{flex:1;overflow:auto;padding:0 14px;}
+      /* UNE SEULE ZONE DEFILANTE. Le min-height:0 est la piece qui compte :
+         sans lui un enfant flex refuse de passer sous la hauteur de son
+         contenu, et le pied du panneau sort de l'ecran sur un portable. */
+      .bdr-mid{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+      .bdr-dyn{flex:none;overflow:visible;padding:0 14px;}
       #bdr-search{width:100%;padding:8px 10px;border:1px solid #2a3a4c;border-radius:8px;margin:8px 0;font-size:12px;background:#0b1119;color:#e6eaf0;}
       #bdr-search:focus{outline:none;border-color:#22c55e;}
       .bdr-opt{cursor:pointer;padding:6px 9px;border-radius:7px;font-family:ui-monospace,monospace;font-size:11px;color:#c3ccd8;}
@@ -882,7 +891,9 @@
       h('div', { class: 'bdr-brand' }, h('span', { class: 'bdr-dot' }), 'Design Review'),
       h('div', { style: 'display:flex;gap:2px' }, dockBtn,
         h('button', { class: 'bdr-icon', title: 'Cacher (rouvre via l’onglet)', text: '⟩', onclick: collapse }))),
-    topZone, selCard, verbsBox, dynBox,
+    topZone,
+    h('div', { class: 'bdr-mid' }, selCard, dynBox),
+    verbsBox,
     h('div', { class: 'bdr-ft' }, countBadge, exportBtn)
   );
   var reopen = h('div', { id: 'bdr-reopen', title: 'Ouvrir Design Review', text: '◀ Design Review', onclick: expand });
@@ -1540,6 +1551,35 @@
   // -> pas de casse de position:fixed sous un ancetre transforme, header sticky).
   // Generique (tout <dialog>) ; n'affecte que les contains() portant sur des
   // noeuds BDR ; ESC / clic hors panneau ferment toujours normalement.
+  /* ══ Le piege a focus des tiroirs, neutralise POUR LE PANNEAU ═══════════
+   *
+   * `tb_generics/static/src/js/drawer.js` pose un `focusin` en CAPTURE sur
+   * `document` : des que le focus sort du tiroir ouvert, il le ramene dedans
+   * (`(list[0] || root).focus()`). Le panneau de BDR n'en fait pas partie, donc
+   * cliquer son champ de note lui rendait le focus aussitot — de l'exterieur ca
+   * ressemble a « le panier est devant l'outil », alors que le panneau est bien
+   * au-dessus et recoit bien le clic. C'est le CLAVIER qui lui est repris.
+   *
+   * 🔴 POURQUOI SUR `window` ET PAS SUR `document`. Le site ecoute sur
+   * `document`, en capture, et il s'enregistre au chargement de la page, donc
+   * avant nous. Deux ecouteurs de capture sur le MEME noeud partent dans leur
+   * ordre d'enregistrement : le sien passerait en premier et aurait deja
+   * deplace le focus. `window` est un cran plus haut dans le chemin de capture,
+   * il passe donc avant, et `stopPropagation` empeche le sien de tourner.
+   *
+   * La portee est etroite a dessein : on n'arrete que les `focusin` dont la
+   * cible est DANS le panneau. Le tiroir garde son piege partout ailleurs, et
+   * son comportement clavier normal est preserve. C'est la meme famille de
+   * correctif que `patchDialogs` (v0.26), et la meme discipline : ne rien
+   * neutraliser au-dela de ce qui gene.
+   */
+  function protegerFocus() {
+    addEventListener('focusin', function (ev) {
+      var t = ev.target;
+      if (t && t.closest && t.closest('#bdr-root')) ev.stopPropagation();
+    }, true);
+  }
+
   function patchDialogs() {
     var origContains = Node.prototype.contains;
     document.querySelectorAll('dialog').forEach(function (d) {
@@ -1641,6 +1681,7 @@
   /* ---- boot --------------------------------------------------------------- */
   root.appendChild(style); root.appendChild(hovBox); root.appendChild(selBox); root.appendChild(oneBox); root.appendChild(multiLayer); root.appendChild(panel); root.appendChild(reopen); root.appendChild(toastEl);
   document.body.appendChild(root);
+  protegerFocus();
   // Patche les <dialog> presents + ceux qui apparaissent/s'ouvrent ensuite
   // (attribut open), pour la compat "clic exterieur" (cf. patchDialogs).
   patchDialogs();

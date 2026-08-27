@@ -405,6 +405,87 @@ def main():
         check("la reprise restaure le changement",
               abs(neutre["apres"] - neutre["pendant"]) < 0.6)
 
+        # ── 🔴 LES DEUX RETOURS D'ELIOTT DU 25.08 ────────────────────────
+        #
+        # 1. « sur mon portable, je ne peux pas voir les options en entier
+        #    (ajouter une note, exporter…) ». Seul le contenu dynamique
+        #    defilait ; la carte de l'element et la barre de verbes n'avaient
+        #    ni hauteur max ni retrecissement, et poussaient le pied du panneau
+        #    hors de l'ecran des que la hauteur descendait.
+        #
+        # 2. « quand j'ai ouvert le panier, c'est comme si le panier etait
+        #    devant l'outil et je peux pas selectionner le champ de texte ».
+        #    `tb_generics/drawer.js` pose un `focusin` en CAPTURE sur
+        #    `document` qui ramene le focus dans le tiroir ouvert. Le panneau
+        #    n'en etait pas exclu : il recevait bien le clic, mais le CLAVIER
+        #    lui etait repris aussitot.
+        pg.set_viewport_size({"width": 1512, "height": 823})   # son portable
+        pg.wait_for_timeout(400)
+        pg.evaluate("""() => {
+          const el = document.querySelector('[data-bdr-cible]');
+          if (el) window.__bdr.select(el);
+        }""")
+        pg.wait_for_timeout(500)      # ⚠️ l'ouverture du panneau dure 0,22 s :
+                                       # mesurer tout de suite rend une position
+                                       # de MI-ANIMATION, pas la position finale.
+        petit = pg.evaluate("""() => {
+          const ft = document.querySelector('#bdr-root .bdr-ft');
+          const exp = ft && ft.querySelector('.bdr-exp');
+          if (!exp) return null;
+          const rf = ft.getBoundingClientRect(), re = exp.getBoundingClientRect();
+          const pt = document.elementFromPoint(re.left + re.width / 2, re.top + re.height / 2);
+          const verbes = [...document.querySelectorAll('#bdr-root .bdr-v')];
+          const note = verbes.find(b => b.textContent.includes('note'));
+          const rn = note ? note.getBoundingClientRect() : null;
+          return {
+            piedDansEcran: rf.bottom <= innerHeight + 1 && rf.top >= 0,
+            exportAtteignable: !!pt && (pt === exp || exp.contains(pt)),
+            noteVisible: !!rn && rn.top >= 0 && rn.bottom <= innerHeight + 1,
+            h: innerHeight
+          };
+        }""")
+        if petit:
+            print("  portable %dpx : pied dans l'écran %s · Exporter atteignable %s · bouton note visible %s"
+                  % (petit["h"], petit["piedDansEcran"], petit["exportAtteignable"], petit["noteVisible"]))
+            check("sur un portable, le pied du panneau reste dans l'écran", petit["piedDansEcran"])
+            check("sur un portable, « Exporter » est atteignable au clic", petit["exportAtteignable"])
+            check("sur un portable, « Ajouter une note » reste visible", petit["noteVisible"])
+
+        # le piège à focus d'un tiroir ne doit plus vider le champ de note
+        trap = pg.evaluate("""() => {
+          // on rejoue EXACTEMENT le piège de tb_generics/drawer.js
+          const tiroir = document.createElement('div');
+          tiroir.id = 'faux-tiroir';
+          tiroir.innerHTML = '<button id="dans-tiroir">x</button>';
+          document.body.appendChild(tiroir);
+          const filet = function (ev) {
+            if (tiroir.contains(ev.target)) return;
+            document.getElementById('dans-tiroir').focus();
+          };
+          document.addEventListener('focusin', filet, true);
+          const note = [...document.querySelectorAll('#bdr-root .bdr-v')]
+            .find(b => b.textContent.includes('note'));
+          if (!note) { tiroir.remove(); return null; }
+          note.click();
+          const ta = document.getElementById('bdr-note');
+          if (!ta) { tiroir.remove(); return null; }
+          ta.focus();
+          const tenu = document.activeElement === ta;
+          ta.value = 'essai de saisie';
+          ta.dispatchEvent(new Event('input', {bubbles: true}));
+          document.removeEventListener('focusin', filet, true);
+          tiroir.remove();
+          return {tenu: tenu, valeur: ta.value,
+                  actif: document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : null};
+        }""")
+        if trap:
+            print("  tiroir ouvert : le champ de note garde le focus %s (actif : %s)"
+                  % (trap["tenu"], trap["actif"]))
+            check("le piège à focus d'un tiroir ne vide plus le champ de note", trap["tenu"])
+            check("et la saisie arrive bien dans le champ", trap["valeur"], "essai de saisie")
+        pg.set_viewport_size({"width": o.largeur, "height": 900})
+        pg.wait_for_timeout(300)
+
         # ── le rapport ────────────────────────────────────────────────────
         rap = pg.evaluate("""() => {
           const el = document.querySelector('[data-bdr-cible]');
