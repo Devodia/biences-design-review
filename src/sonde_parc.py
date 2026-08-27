@@ -87,7 +87,46 @@ def sonder(url, page, largeur, hauteur, lecture, script):
         res["boot_exceptions"] = erreurs[:3]
         res["api"] = pg.evaluate("!!window.__bdr")
 
+        # On attend que la MISE EN PAGE soit stabilisee, pas seulement que le
+        # chargement soit fini. Sous charge (dix navigateurs en parallele),
+        # `innerWidth` est deja a sa valeur finale alors que le layout rend
+        # encore une largeur plus etroite : toute mesure prise la est fausse.
+        res["stabilise"] = pg.evaluate("""async () => {
+          const sig = () => {
+            void document.body.offsetHeight;
+            return [innerWidth, document.body.scrollWidth,
+                    Math.round(document.body.getBoundingClientRect().height)].join('|');
+          };
+          let a = sig();
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const b = sig();
+            if (b === a) return {tours: i + 1, signature: b};
+            a = b;
+          }
+          return {tours: 20, signature: a, avertissement: 'layout jamais stabilise'};
+        }""")
+
         # ── ce que le moteur lit, et ce que le DS y perd ────────────────────
+        #
+        # 🔴 CE DETECTEUR-CI EST SENSIBLE A LA CHARGE, et ca lui a fait dire
+        # n'importe quoi. Le balayage du parc a lance dix Chromium en parallele :
+        # la mise en page n'etait pas stabilisee quand il lisait, `innerWidth`
+        # valait deja 1512 pendant que `getComputedStyle` rendait encore un
+        # layout de ~970 px, et il a signale des « ecrasements » qui n'existent
+        # pas. Rejoue seul, il rend zero, trois fois sur trois.
+        #
+        # On mesure donc DEUX FOIS, avec un reflow force entre les deux, et on
+        # ne garde que ce qui tient sur les deux lectures. Un ecart qui ne
+        # survit pas a une seconde lecture n'est pas un ecart, c'est du layout
+        # en cours.
+        #
+        # Le detecteur par EFFET, lui, n'a pas ce probleme et c'est structurel :
+        # il compare deux lectures du MEME element a une image d'intervalle,
+        # donc un layout perime affecte les deux de la meme facon et s'annule.
+        # Il rend 8/42 sous charge comme au repos. C'est la meme lecon que
+        # `feedback_detecteur_neuf_crie_a_tort` : la premiere sortie d'un
+        # detecteur neuf n'est pas un resultat.
         res["lecture"] = pg.evaluate("""() => {
           const E = window.BDR_makeEngine(window.BDR_CATALOG);
           const st = {ds:0, atomes:0, legacy:0, fonteSansTaille:0, decoratifs:[]};
@@ -106,8 +145,15 @@ def sonder(url, page, largeur, hauteur, lecture, script):
               const a = E.parseAtom(r.s);
               if (a && a.curve !== 'fixed') {
                 const attendu = E.sizeAt(a.curve, a.max, a.min, innerWidth);
-                const servi = parseFloat(getComputedStyle(el).fontSize);
-                if (isFinite(servi) && Math.abs(servi - attendu) > 0.6 && st.decoratifs.length < 25) {
+                const lire = () => parseFloat(getComputedStyle(el).fontSize);
+                const servi = lire();
+                // seconde lecture, apres un reflow force : un ecart qui ne lui
+                // survit pas est du layout en cours, pas un ecrasement
+                void document.body.offsetHeight;
+                const servi2 = lire();
+                const stable = isFinite(servi) && isFinite(servi2)
+                            && Math.abs(servi - servi2) < 0.05;
+                if (stable && Math.abs(servi - attendu) > 0.6 && st.decoratifs.length < 25) {
                   let chemin = el.tagName.toLowerCase();
                   let p = el.parentElement, n = 0;
                   while (p && n < 3) { chemin = p.tagName.toLowerCase()
