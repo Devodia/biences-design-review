@@ -79,6 +79,7 @@ src/
   bdr_ui.js           interface : détection, panneau, parcours
   build.py            assemble src/ → les fichiers buildés à la racine
   test_runtime.py     recette Playwright sur une page SERVIE
+  sonde_parc.py       sonde une page + une taille d'écran, rend du JSON
   fixtures/sass_compile.json   CSS réellement compilé par sass (21 atomes)
 ```
 
@@ -97,7 +98,8 @@ src/
 python src/gen_ds_catalog.py     # catalogue : 0 erreur de validation
 node src/bdr_engine.js           # moteur : 44 OK attendus
 python src/test_runtime.py       # recette runtime sur le banc europe-account
-python src/test_runtime.py --servi   # la meme, sur le script SERVI par GitHub
+python src/test_runtime.py --servi   # la même, sur le script SERVI par GitHub
+python src/sonde_parc.py --page /shop --largeur 1512 --hauteur 823 --servi
 node --check biences-design-review.user.js
 ```
 
@@ -155,13 +157,41 @@ le 17.08.2026 et le moteur les appliquait encore un mois plus tard.
 }
 ```
 
+## Ce que la sonde de parc mesure en plus
+
+`sonde_parc.py` sert deux natures à la fois, et il faut les distinguer :
+
+- **côté outil** : le panneau tient-il à cette taille d'écran, un changement
+  d'axe peint-il sans détruire les autres, la pause rend-elle la page neutre ;
+- **côté DS** : combien d'atomes sont **décoratifs** — posés, mais qui ne
+  décident de rien.
+
+🔴 Le détecteur d'atome décoratif **ne compare pas des valeurs, il retire
+l'atome et regarde si l'écran bouge.** C'est le seul test qui attrape le cas
+trompeur : le `<h3>` « Nos offres passagères » portait `s-54-35-cta` et rendait
+*exactement* la taille que la règle qui le battait imposait. Aucune comparaison
+de valeurs ne pouvait le voir. Mesure sur la home : **7 atomes décoratifs sur
+35 testés**.
+
+Deux gardes qui ont déjà servi : une page sous 200 éléments est déclarée
+**absente** et non vide (le banc a rendu deux 503 dans la même journée), et les
+`!important` inline sont photographiés **avant** injection — sinon le `<h1>`
+masqué du site passe pour une fuite de l'outil.
+
 ## Statut
 
-**v0.30** — catalogue v3 (21 tailles, 5 fontes, 8 couleurs, 8 mods, 2 survols,
+**v0.33** — catalogue v3 (21 tailles, 5 fontes, 8 couleurs, 8 mods, 2 survols,
 55 crans traduits), moteur **44/44** (dont l'égalité au CSS compilé par sass),
-recette runtime **23/23** sur `biences-europe-account-36096602.dev.odoo.com`
-(235 éléments DS lus, dont 201 en atomes) et lecture de la production vérifiée
-(257 éléments DS, 171 crans reconnus « à migrer »).
+recette runtime **35/35** sur `biences-europe-account-36096602.dev.odoo.com`,
+et lecture de la production vérifiée (257 éléments DS, 171 crans reconnus
+« à migrer »).
+
+Ce que la recette couvre en régression, parce que chacun a été un défaut réel :
+un atome que la cascade écrase peint quand même · une règle de page en
+`#id !important` ne bloque plus le changement · un composant qui se re-rend ne
+fait plus perdre les cibles · la pause ne laisse aucun `!important` derrière
+elle · sur un portable le pied du panneau reste dans l'écran · le piège à focus
+d'un tiroir ne vide plus le champ de note.
 
 ## Limitations connues
 
